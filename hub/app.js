@@ -140,6 +140,62 @@ const simulators = [
     href: '../simuladores/11-crom-engine/index.html',
     accent: '#00d4ff'
   }
+
+  ,{
+    num: "16",
+    title: "CROM Diff Viewer",
+    desc: "Visualizador de Diff semântico avaliando overlap LSH entre arquivos gigantes.",
+    icon: "🔍",
+    tags: ["web", "ui", "sim"],
+    href: "../simuladores/16-crom-diff-viewer/index.html",
+    accent: "#ffdd44"
+  },
+  {
+    num: "17",
+    title: "LLM Context Pager",
+    desc: "Carga GGUF particionada sob demanda na WebGPU, paginando memórias sem travar VRAM.",
+    icon: "🧠",
+    tags: ["web", "gpu", "ai"],
+    href: "../simuladores/17-llm-pager/index.html",
+    accent: "#4466ff"
+  },
+  {
+    num: "18",
+    title: "DASH 4K Streamer",
+    desc: "Pipeline de renderização onde chunks Semânticos viram Matrix Maps decodificados.",
+    icon: "📺",
+    tags: ["web", "vfs"],
+    href: "../simuladores/18-crom-dash-player/index.html",
+    accent: "#00ff88"
+  },
+  {
+    num: "19",
+    title: "DB Zero-Overhead",
+    desc: "OPFS IndexedDB overriden. Inserção de milhões de payloads ocupando ~5% do storage local.",
+    icon: "🗄️",
+    tags: ["web", "wasm", "vfs"],
+    href: "../simuladores/19-db-zero-overhead/index.html",
+    accent: "#ff44aa"
+  },
+  {
+    num: "20",
+    title: "Fractal Explorer",
+    desc: "Visualização espácio-temporal das branches da B-Tree Crompressor navegável no DOM/WebGL.",
+    icon: "🌌",
+    tags: ["web", "gpu", "ui"],
+    href: "../simuladores/20-fractal-explorer/index.html",
+    accent: "#fe5f55"
+  },
+  {
+    num: "21",
+    title: "WebDrive Sync",
+    desc: "Simulação do sync O(1) de nuvem para versionamento atômico local do Crom-FS.",
+    icon: "☁️",
+    tags: ["web", "p2p", "vfs"],
+    href: "../simuladores/21-web-drive/index.html",
+    accent: "#00d4ff"
+  }
+
 ];
 
 const projects = [

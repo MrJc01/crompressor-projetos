@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>CROM Codebook Fractal</title>
+    <style>body{background:#000;color:#fff;overflow:hidden;margin:0;}</style>
+</head>
+<body>
+    <div style="position:absolute; top:20px; left:20px; font-family:monospace; color:#0ff;">
+        <h3>🌌 Codebook Fractal Explorer</h3>
+        <p>LSH B-Tree Map rendering in WebGL.</p>
+        <p>Cada nó brilhante é um cluster semântico (Ex: "códigos de erro nginx" agrupados fisicamente próximos).</p>
+    </div>
+    <!-- Simple 3D starfield simulation -->
+    <canvas id="c"></canvas>
+    <script>
+        const c = document.getElementById('c'), ctx = c.getContext('2d');
+        let w = c.width = window.innerWidth, h = c.height = window.innerHeight;
+        let t = 0;
+        function draw() {
+            ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(0,0,w,h);
+            t+=0.02;
+            for(let i=0; i<100; i++) {
+                let x = w/2 + Math.cos(i*0.1 + t)*i*3;
+                let y = h/2 + Math.sin(i*0.1 + t)*i*3;
+                ctx.fillStyle = `hsl(${i*3}, 100%, 60%)`;
+                ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill();
+            }
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>

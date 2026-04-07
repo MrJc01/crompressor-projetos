@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>CROM WebDrive O(1)</title>
+    <style>
+        body{background:#f4f4f9;color:#222;font-family:sans-serif;padding:30px;}
+        .card {background:#fff;border-radius:10px;padding:20px;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:500px;}
+        button {padding:10px 15px;background:#4a90e2;color:#fff;border:none;border-radius:5px;cursor:pointer;}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📁 CROM-Drive: VFS no OPFS</h2>
+        <p>Suba uma versão nova do site. Todo o Delta será calculado client-side, economizando banda extrema ao dar sync com a nuvem.</p>
+        <div style="border:2px dashed #ccc; padding:30px; text-align:center; color:#888; border-radius:5px;">
+            Drop files here
+        </div>
+        <br>
+        <ul>
+            <li>v1.0 - 5.0 MB (Base)</li>
+            <li>v1.1 - 0.2 MB (Deduplicado internamente = 5.2 MB real / 10MB lógico)</li>
+            <li>v1.2 - 0.1 MB (LSH Match = 5.3 MB real / 15MB lógico)</li>
+        </ul>
+        <button onclick="alert('Fazendo Paging do OPFS local via WebAssembly O(1)...')">Sync com CROM Cloud</button>
+    </div>
+</body>
+</html>

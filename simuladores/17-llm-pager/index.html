@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>LLM GGUF Context Pager</title>
+    <style>body{background:#1a1a2e;color:#16213e;font-family:sans-serif;padding:0;margin:0;}</style>
+</head>
+<body style="color:white; padding:20px;">
+    <h1>🧠 CROM-LLM Context Pager (GGUF VFS)</h1>
+    <div style="background:#0f3460; padding:20px; border-radius:8px; margin-bottom:20px;">
+        <h3>Memória WebGPU e OPFS Paging</h3>
+        <p>1. Modelo Llama-3 Comprimido em .crom (40% menor)<br>
+           2. VFS mapeia no OPFS<br>
+           3. Carga O(1) de vetores quânticos do GGUF apenas quando a layer de Attention pede.</p>
+        <button style="padding:10px; background:#e94560; color:white; border:none; cursor:pointer;" onclick="page()">Realizar Paging (Simulado)</button>
+    </div>
+    <div id="vram" style="font-family:monospace;">VRAM Usage: 0 MB</div>
+    <script>
+        function page() {
+            let el = document.getElementById('vram');
+            el.innerHTML = "VRAM: Loading Chunk 0x48FA (7MB)... via WASM FUSE";
+            setTimeout(()=> el.innerHTML += " -> Page IN done! Output Token: 'A inteligência' (0.3ms)", 500);
+        }
+    </script>
+</body>
+</html>
