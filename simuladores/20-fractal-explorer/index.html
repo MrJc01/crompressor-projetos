@@ -2,33 +2,154 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>CROM Codebook Fractal</title>
-    <style>body{background:#000;color:#fff;overflow:hidden;margin:0;}</style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CROM Fractal Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Outfit', sans-serif; color: white;}
+        #canvas-container { position: absolute; top:0; left:0; width:100vw; height:100vh;}
+        
+        .ui-glass {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: rgba(10, 10, 10, 0.4);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            width: 300px;
+            pointer-events: auto;
+        }
+
+        h2 { margin: 0 0 10px 0; background: -webkit-linear-gradient(45deg, #ff007f, #00d2ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600;}
+        p { font-size: 14px; color: #ccc; line-height: 1.5;}
+
+        .node-info {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #ff007f;
+            padding: 20px;
+            border-radius: 8px;
+            transform: translateX(120%);
+            transition: 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
+        }
+
+        .node-info.visible { transform: translateX(0); }
+        .hash-id { font-family: monospace; color: #00d2ff; font-size: 16px;}
+    </style>
 </head>
 <body>
-    <div style="position:absolute; top:20px; left:20px; font-family:monospace; color:#0ff;">
-        <h3>🌌 Codebook Fractal Explorer</h3>
-        <p>LSH B-Tree Map rendering in WebGL.</p>
-        <p>Cada nó brilhante é um cluster semântico (Ex: "códigos de erro nginx" agrupados fisicamente próximos).</p>
+    <div id="canvas-container"></div>
+    
+    <div class="ui-glass">
+        <h2>Fractal Codebook</h2>
+        <p>A B-Tree estrutural do Crompressor mapeia "Semântica" no espaço. Arquivos de texto geram galáxias de IDs Hashed O(1).</p>
+        <p>Aproxime o cursor dos clusters visuais. Nodes brilhantes indicam um bloco de dados raiz altamente referenciado (Deduplicado milhares de vezes).</p>
     </div>
-    <!-- Simple 3D starfield simulation -->
-    <canvas id="c"></canvas>
+
+    <div class="node-info" id="nodeInfo">
+        <div style="font-size:11px; text-transform:uppercase; color:#888;">Cluster ID Inspecionado</div>
+        <div class="hash-id" id="hashId">0x000000</div>
+        <div style="margin-top:10px; font-size:13px;">Referências Globais (Deduplicações): <span id="refCount" style="color:#ff007f;font-weight:bold;">0</span></div>
+    </div>
+
     <script>
-        const c = document.getElementById('c'), ctx = c.getContext('2d');
-        let w = c.width = window.innerWidth, h = c.height = window.innerHeight;
-        let t = 0;
-        function draw() {
-            ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(0,0,w,h);
-            t+=0.02;
-            for(let i=0; i<100; i++) {
-                let x = w/2 + Math.cos(i*0.1 + t)*i*3;
-                let y = h/2 + Math.sin(i*0.1 + t)*i*3;
-                ctx.fillStyle = `hsl(${i*3}, 100%, 60%)`;
-                ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill();
-            }
-            requestAnimationFrame(draw);
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        camera.position.z = 50;
+        camera.position.y = 10;
+        camera.lookAt(0,0,0);
+
+        // Core Particles (Galaxias formadas pela LSH B-Tree)
+        const particleCount = 3000;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        const color1 = new THREE.Color(0xff007f);
+        const color2 = new THREE.Color(0x00d2ff);
+
+        for(let i = 0; i < particleCount; i++) {
+            // Spiral arms math representation for "Clustering" LSH
+            let theta = Math.random() * 2 * Math.PI;
+            let radius = Math.random() * 30;
+            let branch = i % 3; // 3 clusters / branches na B-Tree
+            
+            let angle = (branch * (Math.PI*2/3)) + (radius * 0.2); // Galaxy spiral
+            
+            positions[i*3] = Math.cos(angle) * radius + (Math.random()-0.5)*5; // X
+            positions[i*3+1] = (Math.random()-0.5)*4 * (1-(radius/30)); // Y
+            positions[i*3+2] = Math.sin(angle) * radius + (Math.random()-0.5)*5; // Z
+
+            // Color gradient based on radius
+            const mixedColor = color1.clone().lerp(color2, radius/30);
+            colors[i*3] = mixedColor.r;
+            colors[i*3+1] = mixedColor.g;
+            colors[i*3+2] = mixedColor.b;
         }
-        draw();
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.3,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        const particleSystem = new THREE.Points(geometry, material);
+        scene.add(particleSystem);
+
+        let mouseX = 0;
+        let mouseY = 0;
+        const info = document.getElementById('nodeInfo');
+        const hashId = document.getElementById('hashId');
+        const refCount = document.getElementById('refCount');
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) * 0.05;
+            mouseY = (e.clientY - window.innerHeight / 2) * 0.05;
+
+            // Fake Raycast / Hover trigger
+            if(Math.abs(mouseX) < 4 && Math.abs(mouseY) < 4) {
+                info.classList.add('visible');
+                if(Math.random() > 0.95) { // update data slightly
+                    hashId.textContent = "0x" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0').toUpperCase();
+                    refCount.textContent = Math.floor(Math.random()*5000 + 400);
+                }
+            } else {
+                info.classList.remove('visible');
+            }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            particleSystem.rotation.y += 0.002;
+            
+            // Cam parallax
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY - camera.position.y) * 0.05 + 10;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>

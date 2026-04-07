@@ -2,25 +2,292 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>LLM GGUF Context Pager</title>
-    <style>body{background:#1a1a2e;color:#16213e;font-family:sans-serif;padding:0;margin:0;}</style>
-</head>
-<body style="color:white; padding:20px;">
-    <h1>🧠 CROM-LLM Context Pager (GGUF VFS)</h1>
-    <div style="background:#0f3460; padding:20px; border-radius:8px; margin-bottom:20px;">
-        <h3>Memória WebGPU e OPFS Paging</h3>
-        <p>1. Modelo Llama-3 Comprimido em .crom (40% menor)<br>
-           2. VFS mapeia no OPFS<br>
-           3. Carga O(1) de vetores quânticos do GGUF apenas quando a layer de Attention pede.</p>
-        <button style="padding:10px; background:#e94560; color:white; border:none; cursor:pointer;" onclick="page()">Realizar Paging (Simulado)</button>
-    </div>
-    <div id="vram" style="font-family:monospace;">VRAM Usage: 0 MB</div>
-    <script>
-        function page() {
-            let el = document.getElementById('vram');
-            el.innerHTML = "VRAM: Loading Chunk 0x48FA (7MB)... via WASM FUSE";
-            setTimeout(()=> el.innerHTML += " -> Page IN done! Output Token: 'A inteligência' (0.3ms)", 500);
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Context Pager GGUF</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050510;
+            --ai-glow: #e94560;
+            --ai-secondary: #0f3460;
+            --ai-text: #fff;
+            --ai-muted: #888;
         }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--ai-text);
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(ellipse at bottom, rgba(233, 69, 96, 0.15) 0%, transparent 60%);
+        }
+
+        /* Glassmorphism Sidebar Explicativa */
+        .sidebar {
+            width: 400px;
+            background: rgba(15, 52, 96, 0.3);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(233, 69, 96, 0.3);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(233, 69, 96, 0.6);
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(233, 69, 96, 0.2);
+            color: var(--ai-glow);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 1px solid var(--ai-glow);
+            margin-bottom: 30px;
+        }
+
+        .explainer {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid var(--ai-glow);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .explainer h3 { margin: 0 0 10px 0; font-size: 18px; }
+        .explainer p { margin: 0; color: #ccc; font-size: 15px; }
+
+        /* Workspace 3D Area */
+        .workspace {
+            flex: 1;
+            position: relative;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .prompt-area {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            width: 80%;
+            padding: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .prompt-area input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .prompt-area button {
+            background: var(--ai-glow);
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .prompt-area button:hover {
+            box-shadow: 0 0 20px var(--ai-glow);
+        }
+
+        /* Representação do GGUF e VRAM */
+        .gguf-container {
+            margin-top: 50px;
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 5px;
+            width: 80%;
+        }
+
+        .gguf-block {
+            aspect-ratio: 1;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .gguf-block.active {
+            background: var(--ai-glow);
+            border-color: #fff;
+            box-shadow: 0 0 15px var(--ai-glow);
+            transform: scale(1.2);
+            z-index: 5;
+        }
+
+        .vram-stats {
+            position: absolute;
+            bottom: 40px;
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--ai-secondary);
+            padding: 15px 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-val { font-size: 32px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--ai-glow); }
+        .stat-lbl { font-size: 11px; text-transform: uppercase; color: #888; }
+        
+        .console {
+            width: 80%;
+            height: 100px;
+            background: #000;
+            margin-top: 30px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #0f0;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h1>LLM Pager</h1>
+        <div class="badge">VFS GGUF Injection</div>
+        
+        <div class="explainer">
+            <h3>Carga Clássica (OOM)</h3>
+            <p>Modelos de IA locais (LLaMA, Qwen) tentam carregar todos unificados os Tensores GGUF para a Memória (VRAM). Num browser, isso causa travamentos imediatos de hardware.</p>
+        </div>
+
+        <div class="explainer" style="border-color:#00ff88;">
+            <h3 style="color:#00ff88;">Paginação CROM O(1)</h3>
+            <p>O arquivo .crom do modelo reside latente e cru na Origin Private File System (OPFS). O Crompressor "mapeia" ele de forma fake. À medida que você gera um Token, só os blocos (0.2MB) de pesos de Atenção necessários são alçados à memória real via bridge CROM-<br>WebGPU.</p>
+        </div>
+        
+        <p style="color:#aaa; font-size:12px; margin-top:auto;">
+            <b>Mecânica:</b> O painel direito mostra os tensores armazenados passivos. Dê Play. Cada token geado "acende" os blocos específicos puxados O(1) do OPFS.
+        </p>
+    </div>
+
+    <div class="workspace">
+        <div class="prompt-area">
+            <input type="text" id="promptStr" value="Explique como a matéria fractal colapsa:">
+            <button id="genBtn" onclick="runInference()">Gerar</button>
+        </div>
+
+        <div class="console" id="terminal"></div>
+
+        <div class="gguf-container" id="grid">
+            <!-- Gerado via JS para representar os pesos do GGUF -->
+        </div>
+
+        <div class="vram-stats">
+            <div class="stat-box">
+                <div class="stat-val" id="vramUsed">0 MB</div>
+                <div class="stat-lbl">VRAM Consumida na Geração</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val">3.2 GB</div>
+                <div class="stat-lbl">Tamanho Físico do .crom (OPFS)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const terminal = document.getElementById('terminal');
+        const vramUsed = document.getElementById('vramUsed');
+        const blocks = [];
+        
+        // Criar 128 blocos representando as layers tensor do LLM
+        for(let i=0; i<128; i++) {
+            let el = document.createElement('div');
+            el.className = 'gguf-block';
+            grid.appendChild(el);
+            blocks.push(el);
+        }
+
+        let isRunning = false;
+        const fakeTokens = [" A", " matéria", " fractal", " colapsa", " quando", " matrizes", " de", " densidade", " divergem", " do", " limite", " quântico."];
+        let tokenIndex = 0;
+
+        function log(msg) {
+            terminal.innerHTML += `> ${msg}<br>`;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function runInference() {
+            if(isRunning) return;
+            isRunning = true;
+            tokenIndex = 0;
+            terminal.innerHTML = '';
+            log("Inicializando WebAssembly OPFS Bridge...");
+            log("Mapeando arquivo Qwen2.5-3B.crom no VoidFS...");
+
+            setTimeout(() => {
+                generateNext();
+            }, 800);
+        }
+
+        function generateNext() {
+            if(tokenIndex >= fakeTokens.length) {
+                log("<b>[Fim da Geração]. VRAM flusheada.</b>");
+                blocks.forEach(b => b.classList.remove('active'));
+                isRunning = false;
+                vramUsed.textContent = "0 MB";
+                return;
+            }
+
+            // A cada token, pega 4 a 8 tensores (blocos) aleatorios
+            blocks.forEach(b => b.classList.remove('active'));
+            let usedBlocks = Math.floor(Math.random() * 5) + 4;
+            
+            for(let i=0; i<usedBlocks; i++) {
+                let idx = Math.floor(Math.random() * blocks.length);
+                blocks[idx].classList.add('active');
+            }
+
+            let loadedMB = (usedBlocks * 5.4).toFixed(1);
+            vramUsed.textContent = `${loadedMB} MB`;
+
+            log(`<i>sys.page() O(1) puxando blocos para [Token ${tokenIndex}]... Mem: ${loadedMB}MB</i>`);
+            log(`<span style="color:#fff;">Output: ${fakeTokens.slice(0, tokenIndex+1).join('')}</span>`);
+
+            tokenIndex++;
+            setTimeout(generateNext, 300 + Math.random()*200); // 3-4 tokens per sec sim
+        }
+
     </script>
 </body>
 </html>

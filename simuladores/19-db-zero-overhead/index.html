@@ -2,17 +2,146 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>CROM DB Zero Overhead</title>
-    <style>body{background:#eee;color:#333;font-family:consolas, monospace;padding:40px;}</style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB Zero Overhead</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; background-color: #0d1117; color: #c9d1d9; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        header { padding: 20px 40px; border-bottom: 1px solid #30363d; display: flex; align-items: center; justify-content: space-between; }
+        header h1 { margin: 0; font-size: 20px; color: #58a6ff; }
+        
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        
+        .db-panel { width: 350px; background: #161b22; border-right: 1px solid #30363d; padding: 25px; display: flex; flex-direction: column; gap: 25px; overflow-y: auto;}
+        .db-stat { background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid #30363d;}
+        .db-stat h4 { margin: 0 0 5px 0; font-size: 12px; color: #8b949e; text-transform: uppercase; }
+        .db-stat .val { font-size: 24px; font-weight: bold; color: #58a6ff; font-family: 'Fira Code', monospace; }
+        
+        .terminal-container { flex: 1; display: flex; flex-direction: column; padding: 25px; background: radial-gradient(circle at center, #1b212a 0%, #0d1117 100%);}
+        .terminal { flex: 1; background: #010409; border-radius: 8px; border: 1px solid #30363d; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5);}
+        .term-header { background: #161b22; padding: 10px 15px; border-bottom: 1px solid #30363d; font-family: 'Fira Code'; font-size: 12px; border-radius: 8px 8px 0 0; display:flex; gap:8px;}
+        .circle { width:12px; height:12px; border-radius:50%; background:#444;}
+        .c-red {background:#ff5f56;} .c-yel {background:#ffbd2e;} .c-grn {background:#27c93f;}
+        
+        .term-body { flex: 1; padding: 20px; font-family: 'Fira Code', monospace; font-size: 13px; color: #e6edf3; overflow-y: auto; line-height: 1.5; }
+        .prompt { display: flex; margin-top: 10px; }
+        .prompt span { color: #3fb950; margin-right: 10px; }
+        .prompt input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 14px; outline: none; }
+        
+        .chart-box { height: 160px; margin-top: 20px; background:#010409; border-radius:8px; border:1px solid #30363d; display:flex; align-items:flex-end; padding:20px; gap:20px; justify-content:center;}
+        .bar-col { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; width:80px; gap:10px;}
+        .bar { width: 100%; border-radius:4px 4px 0 0; transition: 1s cubic-bezier(0.1, 0.7, 0.1, 1); }
+        .bar-label { font-size: 11px; color:#8b949e; text-align:center;}
+    </style>
 </head>
 <body>
-    <h2>🗄️ In-Browser CROM DataBase (IndexedDB Override by OPFS)</h2>
-    <div style="background:#fff; padding:20px; border:1px solid #ccc;">
-        <p>1 Milhão de registros JSON ingeridos.</p>
-        <p><b>Storage JS Clássico:</b> 450 MB</p>
-        <p><b>CROM-WASM B-Tree Encoded:</b> 12 MB (Ratio ~37:1)</p>
-        <button onclick="document.getElementById('b').innerHTML='Query Index(id=999)... Encontrado O(1) de Chunk [14ms]'" style="padding:10px; cursor:pointer;">Select * from logs via CROM</button>
-        <div id="b" style="margin-top:20px; color:#c00; font-weight:bold;"></div>
+    <header>
+        <h1>🗄️ CROM Zero-Overhead OPFS DB</h1>
+        <div style="color:#8b949e; font-size:13px;">Simulação de Storage: 1 Milhão de Logs JSON</div>
+    </header>
+    
+    <div class="main-content">
+        <div class="db-panel">
+            <p style="font-size:13px; line-height:1.6; margin-top:0;">Bibliotecas como <b>IndexedDB</b> ou <b>SQLite-WASM</b> salvam dados crus. Se você jogar 1M de logs HTTP JSON, ocupará ~500MB de disco do usuário.</p>
+            <p style="font-size:13px; line-height:1.6; color:#58a6ff;">O <b>CROM-DB</b> intercepta a escrita. Logs altamente repetitivos são encodados na LSH B-Tree nativamente. Compressões de 40:1 são comuns, caindo o DB local para ínfimos 12MB.</p>
+            
+            <div class="db-stat">
+                <h4>Raw Size Estimate</h4>
+                <div class="val" style="color:#ff7b72" id="valRaw">0 MB</div>
+            </div>
+            <div class="db-stat">
+                <h4>CROM Storage (OPFS)</h4>
+                <div class="val" style="color:#3fb950" id="valCrom">0 MB</div>
+            </div>
+            
+            <div class="chart-box">
+                <div class="bar-col">
+                    <div class="bar" id="bar1" style="height:2%; background:#ff7b72;"></div>
+                    <div class="bar-label">Vanilla DB</div>
+                </div>
+                <div class="bar-col">
+                    <div class="bar" id="bar2" style="height:2%; background:#3fb950;"></div>
+                    <div class="bar-label">CROM DB</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="terminal-container">
+            <div class="terminal">
+                <div class="term-header">
+                    <div class="circle c-red"></div><div class="circle c-yel"></div><div class="circle c-grn"></div>
+                    <span style="margin-left:10px;">crom-client@local:~</span>
+                </div>
+                <div class="term-body" id="termBody">
+                    <div>CROM VFS Daemon Conectado ao JS via WASM.</div>
+                    <div>Aguardando ingestão de dados...</div>
+                    <div style="color:#8b949e">Dica: digite 'insert' ou 'query' e aperte Enter.</div>
+                    
+                    <div class="prompt" id="promptLine">
+                        <span>db></span>
+                        <input type="text" id="cmd" autocomplete="off" autofocus>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        const cmd = document.getElementById('cmd');
+        const termBody = document.getElementById('termBody');
+        const valRaw = document.getElementById('valRaw');
+        const valCrom = document.getElementById('valCrom');
+        const bar1 = document.getElementById('bar1');
+        const bar2 = document.getElementById('bar2');
+
+        function printLog(msg, color="#e6edf3") {
+            let el = document.createElement('div');
+            el.innerHTML = msg;
+            el.style.color = color;
+            // insere antes do prompt
+            termBody.insertBefore(el, document.getElementById('promptLine'));
+            termBody.scrollTop = termBody.scrollHeight;
+        }
+
+        cmd.addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') {
+                let v = this.value.trim().toLowerCase();
+                printLog(`db> ${this.value}`, "#fff");
+                this.value = '';
+                
+                if(v === 'insert') {
+                    printLog("Iniciando ingestão de 1.000.000 records estruturados...");
+                    setTimeout(() => {
+                        valRaw.textContent = "450.2 MB";
+                        bar1.style.height = "100%";
+                        
+                        setTimeout(() => {
+                            printLog("[CROM LSH] Agrupando shapes JSON idênticos...", "#ffbd2e");
+                            printLog("[CROM LSH] Entropia baixa detectada. Gerando Codebook.", "#ffbd2e");
+                            
+                            setTimeout(() => {
+                                valCrom.textContent = "12.8 MB";
+                                bar2.style.height = "5%"; // 12 is ~2% of 450 visually but 5 to be visible
+                                printLog("✅ Sucesso. 1M records inseridos na B-Tree VFS (OPFS)", "#3fb950");
+                            }, 500);
+                        }, 400);
+                    }, 500);
+                } 
+                else if (v === 'query') {
+                    printLog("Buscando record: db.find({ timestamp: '2026-04-06' })");
+                    setTimeout(() => {
+                        printLog("<i>Cache Miss OPFS... Acessando B-Tree Node LSH...</i>", "#8b949e");
+                        setTimeout(()=> {
+                            let dummyJson = `{ "id": 99931, "status": 200, "user": "admin", "agent": "Mozilla" }`;
+                            printLog(`Retornado O(1) em 14ms: <br><span style="color:#a5d6ff">${dummyJson}</span>`);
+                        }, 200);
+                    }, 200);
+                }
+                else {
+                    printLog("Comando não reconhecido. Use 'insert' ou 'query'.", "#ff7b72");
+                }
+            }
+        });
+    </script>
 </body>
 </html>
