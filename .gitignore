@@ -1,0 +1,27 @@
+# Binários
+bin/
+*.exe
+*.crom
+*.cromdb
+
+# Go
+vendor/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Dados de teste gerados
+testdata/generated/
+*.log.gz
+*.log.zst
+
+# Node (caso use npm para algo)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
