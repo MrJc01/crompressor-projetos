@@ -3,185 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CROM DASH 4K Streamer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;500;900&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <title>CROM DASH Streaming</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0d0d0d;
-            --surface: #1a1a24;
-            --brand-main: #b829ff;
+            --bg: #090a0f;
+            --surface: #131520;
+            --brand: #b829ff;
             --brand-alt: #00d2ff;
+            --success: #00ff88;
+            --error: #fe5f55;
+            --border: #2a2d3e;
+            --text-main: #fff;
+            --text-muted: #8892b0;
         }
 
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: #fff;
-            font-family: 'Roboto', sans-serif;
-            display: flex;
-            height: 100vh;
-        }
-
-        .info-panel {
-            flex: 0 0 350px;
-            background: rgba(20, 20, 30, 0.8);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 40px 30px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h2 { font-weight: 900; font-size: 24px; margin: 0 0 5px 0; background:-webkit-linear-gradient(45deg, var(--brand-main), var(--brand-alt)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        body { margin: 0; background: var(--bg); color: var(--text-main); font-family: 'Outfit', sans-serif; display: flex; height: 100vh; overflow:hidden;}
         
-        .tagline { color: #888; font-size: 13px; margin-bottom: 40px; }
-
-        .card {
-            background: #000;
-            border-left: 3px solid var(--brand-main);
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-
-        .card h4 { margin: 0 0 10px 0; color: #fff; }
-        .card p { margin: 0; font-size: 14px; color: #aaa; line-height: 1.5; }
-
-        .dash-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-        }
-
-        /* Fake Video Player in Canvas */
-        .player-wrapper {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            aspect-ratio: 16/9;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .controls {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            background: linear-gradient(0deg, rgba(0,0,0,0.9), transparent);
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            box-sizing: border-box;
-        }
-
-        .play-btn {
-            width: 40px; height: 40px;
-            border-radius: 50%;
-            background: var(--brand-alt);
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center; justify-content: center;
-        }
-
-        .play-btn::before {
-            content: '';
-            border-style: solid;
-            border-width: 8px 0 8px 12px;
-            border-color: transparent transparent transparent #000;
-            margin-left: 4px;
-        }
-
-        .progress {
-            flex: 1;
-            height: 4px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            width: 30%;
-            background: var(--brand-main);
-            border-radius: 2px;
-        }
-
-        /* Dashboards Inferiores */
-        .kpi-row {
-            display: flex;
-            gap: 30px;
-            margin-top: 40px;
-            width: 100%;
-            max-width: 800px;
-        }
-
-        .kpi {
-            flex: 1;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .kpi-val {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 28px;
-            font-weight: bold;
-            color: #fff;
-            margin: 10px 0;
-            transition: color 0.3s;
-        }
+        /* SIDEBAR INFO */
+        .info-panel { width: 340px; background: var(--surface); border-right: 1px solid var(--border); padding: 30px; display: flex; flex-direction: column;}
         
-        .kpi-label { font-size: 11px; text-transform: uppercase; color: #888; }
+        h2 { margin: 0 0 5px 0; font-size: 26px; background:-webkit-linear-gradient(45deg, var(--brand), var(--brand-alt)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:800;}
+        .tagline { color: var(--text-muted); font-size: 13px; margin-bottom: 30px; }
+
+        .explainer { background: rgba(0,0,0,0.4); padding: 20px; border-radius: 12px; font-size: 14px; line-height: 1.6; border-left: 3px solid var(--border); margin-bottom: 20px;}
+        .explainer strong { color: var(--brand-alt); }
+        .explainer.crom { border-left-color: var(--success); }
+
+        .switch-container { margin-top: auto; background: #000; padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;}
         
-        /* Switch */
-        .switch-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: auto;
-            background: #111;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #333;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 24px;
-        }
-
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 60px; height: 30px; }
         .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 30px; }
+        .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(30px); }
 
-        .slider {
-            position: absolute; cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #444; transition: .4s;
-            border-radius: 24px;
-        }
+        /* MULTI-PANEL WORKSPACE */
+        .workspace { flex: 1; padding: 30px; display: flex; flex-direction: column; gap: 20px;}
+        
+        .main-view { display: flex; gap: 20px; flex: 1; }
+        
+        /* PLAYER 4K VIRTUAL */
+        .player-box { flex: 1.5; background: #000; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.5); position:relative;}
+        .player-head { background: var(--surface); padding: 10px 20px; font-family:'JetBrains Mono'; font-size:12px; color:var(--text-muted); border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; }
+        .player-canvas-container { flex: 1; position: relative; background: #050505;}
+        canvas { width: 100%; height: 100%; display: block;}
+        
+        /* Visualizador de Blocos LSH Sobrepostos */
+        .block-grid { position:absolute; top:0; left:0; width:100%; height:100%; display:grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); pointer-events: none;}
+        .macro-block { border: 1px solid transparent; transition: 0.1s;}
+        .macro-block.update { border-color: rgba(254, 95, 85, 0.4); background: rgba(254, 95, 85, 0.1); }
+        .macro-block.cached { border-color: rgba(0, 255, 136, 0.3); background: rgba(0, 255, 136, 0.05); }
 
-        .slider:before {
-            position: absolute; content: "";
-            height: 16px; width: 16px; left: 4px; bottom: 4px;
-            background-color: white; transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider { background-color: var(--brand-main); }
-        input:checked + .slider:before { transform: translateX(26px); }
+        /* DEBUGGER DE TRAFEGO DE REDE */
+        .network-box { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow:hidden;}
+        .net-head { background: #000; padding: 15px 20px; font-family:'JetBrains Mono'; font-size:12px; border-bottom: 1px solid var(--border); color:#fff; display:flex; justify-content:space-between;}
+        
+        .bandwidth-hud { padding: 20px; display:flex; justify-content:center; align-items:center; flex-direction:column; background:linear-gradient(180deg, rgba(0,0,0,0.5), transparent); border-bottom:1px solid var(--border);}
+        .bw-value { font-family:'JetBrains Mono'; font-size:42px; font-weight:bold; color:var(--text-main); margin-bottom:5px; transition:0.3s;}
+        .bw-value.high { color: var(--error); }
+        .bw-value.low { color: var(--success); }
+        
+        .packet-log { flex:1; padding: 15px; font-family:'JetBrains Mono'; font-size:11px; overflow-y:auto; color:var(--text-muted); line-height:1.6;}
+        .pkt { display:flex; gap:10px; padding:4px 0; border-bottom:1px dashed rgba(255,255,255,0.05);}
+        .pkt .time { color:#666;}
+        .pkt .size { color:#fff; width:60px; text-align:right;}
+        .pkt .desc { flex:1;}
 
     </style>
 </head>
@@ -189,137 +78,231 @@
 
     <div class="info-panel">
         <h2>CROM-DASH</h2>
-        <div class="tagline">Dynamic Adaptive Streaming over HTTP</div>
+        <div class="tagline">Streamer WebAssembly Semântico</div>
 
-        <div class="card">
-            <h4>Padrão da Indústria (H264/AV1)</h4>
-            <p>Os reprodutores modernos baixam chunks pesados de vídeo. Um filme 4K exige no mínimo 25 Mbps de largura de banda contínua.</p>
+        <div class="explainer">
+            <strong>Video Crú (H.264 Padrão):</strong> O servidor envia imagens/Macroblocos constantes pela rede (Keyframes e Inter-frames). Mesmo partes similares custam Kilobytes a todo segundo. Assistir consome a rede ativamente.
         </div>
 
-        <div class="card" style="border-color: var(--brand-alt);">
-            <h4>Agressividade Crompressor</h4>
-            <p>O jogador retransmite <b>pontos de LSH</b>. O WebAssembly reconstrói as matrizes de cor no `<canvas>` agrupando codebooks locais em vez de pixels raw.</p>
-            <p style="margin-top:10px; color:#fff;">A banda cai drasticamente se houver pouca mutação semântica (câmera parada, blocos repetidos).</p>
+        <div class="explainer crom">
+            <strong>Decodificação CROM LSH:</strong> Ao ativar, o vídeo vira <i>texto/hashes estruturados</i> no Backend. O WASM no seu browser recebe apenas ponteiros (ex: "Use o cluster LSH #A2F para renderizar o fundo roxo"). Como o fundo já foi transmitido antes, o custo de rede aproxima-se de <b>0 Mbps</b> em cenas estáticas.
         </div>
 
-        <div class="switch-wrapper">
-            <span style="font-size:13px; font-weight:bold;">Modo CROM Engine</span>
+        <div style="flex:1"></div>
+        <p style="font-size:11px; color:#666; text-align:center;">Assista à grade sobre o vídeo e ao Log de Pacotes ao lado para entender a diferença.</p>
+
+        <div class="switch-container">
+            <div style="font-size:14px; font-weight:700; font-family:'JetBrains Mono';">COMPRESSÃO LSH O(1)</div>
             <label class="switch">
-                <input type="checkbox" id="cromToggle" checked>
+                <input type="checkbox" id="cromToggle">
                 <span class="slider"></span>
             </label>
         </div>
     </div>
 
-    <div class="dash-area">
-        
-        <div class="player-wrapper">
-            <canvas id="videoCanvas"></canvas>
+    <div class="workspace">
+        <div class="main-view">
             
-            <div class="controls">
-                <button class="play-btn" onclick="togglePlay()"></button>
-                <div class="progress">
-                    <div class="progress-fill" id="bar"></div>
+            <!-- Video Player -->
+            <div class="player-box">
+                <div class="player-head">
+                    <span>Renderização: <span id="renderMode" style="color:var(--error);">Canvas 2D Bruto (Pixels)</span></span>
+                    <span>1080p @ 30fps</span>
                 </div>
-                <div style="font-family:'JetBrains Mono'; font-size:12px; color:#aaa;">4K / 60fps</div>
+                
+                <div class="player-canvas-container">
+                    <canvas id="videoCanvas"></canvas>
+                    
+                    <!-- Macroblocks Grid (10x10) for UI Metaphor -->
+                    <div class="block-grid" id="gridOverlay"></div>
+                </div>
+                
+                <div style="padding:15px; background:#000; border-top:1px solid var(--border); display:flex; align-items:center; gap:15px;">
+                    <div style="width:30px; height:30px; background:var(--brand-alt); border-radius:50%; display:flex; justify-content:center; align-items:center; color:#000; font-size:12px; cursor:pointer;" onclick="isPaused = !isPaused;">⏸</div>
+                    <div style="height:4px; flex:1; background:#333; border-radius:2px;"><div style="width:100%; height:100%; background:var(--brand); border-radius:2px;"></div></div>
+                    <span style="font-family:'JetBrains Mono'; font-size:11px; color:#555;">AO VIVO</span>
+                </div>
+            </div>
+
+            <!-- Network Analyzer -->
+            <div class="network-box">
+                <div class="net-head">
+                    <span>📡 HTTP Traffic Analyzer</span>
+                    <span id="packState">Raw TCP Packets</span>
+                </div>
+                
+                <div class="bandwidth-hud">
+                    <div class="bw-value high" id="bwValue">24.5 Mbps</div>
+                    <div style="font-size:10px; color:#888; letter-spacing:1px; text-transform:uppercase;">Largura de Banda Exigida</div>
+                </div>
+
+                <div class="packet-log" id="logPanel">
+                    <!-- Logs entram aqui -->
+                </div>
             </div>
             
-            <!-- Overlay visual para o modo CROM -->
-            <div id="cromOverlay" style="position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.5); padding:10px; font-family:'JetBrains Mono'; font-size:11px; color:#0f0; border:1px solid #0f0; border-radius:4px;">
-                CROM DECODE ACTIVE<br>
-                Codebook Sync: OK<br>
-                Frame delta matrix parsing...
-            </div>
         </div>
-
-        <div class="kpi-row">
-            <div class="kpi">
-                <div class="kpi-label">Uso de Banda Real-Time</div>
-                <div class="kpi-val" id="bwVal">4.2 Mbps</div>
-            </div>
-            <div class="kpi">
-                <div class="kpi-label">Economia no Tráfego de Dados</div>
-                <div class="kpi-val" id="svVal" style="color:var(--brand-alt);">78%</div>
-            </div>
-        </div>
-
     </div>
 
+    <!-- WASM Bridge -->
+    <script src="../12-crom-wasm-core/wasm_exec.js"></script>
     <script>
+        // DOM Elements
         const canvas = document.getElementById('videoCanvas');
         const ctx = canvas.getContext('2d');
-        const cromToggle = document.getElementById('cromToggle');
-        const cromOverlay = document.getElementById('cromOverlay');
-        const bwVal = document.getElementById('bwVal');
-        const svVal = document.getElementById('svVal');
-        const bar = document.getElementById('bar');
-        
-        let frames = 0;
-        let isPlaying = true;
-        let pBar = 0;
+        const toggle = document.getElementById('cromToggle');
+        const renderMode = document.getElementById('renderMode');
+        const packState = document.getElementById('packState');
+        const bwValue = document.getElementById('bwValue');
+        const logPanel = document.getElementById('logPanel');
+        const gridOverlay = document.getElementById('gridOverlay');
 
-        function togglePlay() {
-            isPlaying = !isPlaying;
-            if(isPlaying) render();
+        // Setup Grid de blocos metafóricos
+        const totalBlocks = 100; // 10x10
+        const domBlocks = [];
+        for(let i=0; i<totalBlocks; i++) {
+            let d = document.createElement('div');
+            d.className = 'macro-block';
+            gridOverlay.appendChild(d);
+            domBlocks.push(d);
         }
 
-        // Desenha "Mosaicos Sintéticos" para simular a decodificação LSH do CROM no Canvas em 4K pseudo
-        function render() {
-            if(!isPlaying) return;
-            frames++;
-
+        function resize() {
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-            let isCrom = cromToggle.checked;
-            cromOverlay.style.display = isCrom ? 'block' : 'none';
+        // Inicializa WASM
+        const go = new Go(); 
+        let wasmReady = false;
 
-            // Preenche fundo
-            ctx.fillStyle = '#050505';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        async function initWasm() {
+            try {
+                const response = await fetch('../12-crom-wasm-core/crompressor.wasm');
+                const wasmObj = await WebAssembly.instantiateStreaming(response, go.importObject);
+                go.run(wasmObj.instance);
+                wasmReady = true;
+            } catch (e) { console.error("WASM Fallback."); }
+        }
+        initWasm();
 
-            // Simula render de um ambiente/video
-            for(let i=0; i<50; i++) {
-                let size = isCrom ? (Math.random()*40 + 40) : (Math.random()*20 + 10);
-                let x = Math.sin(frames*0.01 + i)*canvas.width*0.5 + canvas.width/2;
-                let y = Math.cos(frames*0.02 + i)*canvas.height*0.5 + Math.sin(frames*0.05)*100 + canvas.height/2;
-                
-                if (isCrom) {
-                    ctx.fillStyle = `hsla(${(i*10 + frames)%360}, 100%, 50%, 0.4)`;
-                    ctx.fillRect(x, y, size, size); // "Blocky" nature of chunk substitution
-                } else {
-                    ctx.beginPath();
-                    ctx.arc(x, y, size, 0, 7);
-                    ctx.fillStyle = `hsla(${(i*5 + frames)%360}, 80%, 60%, 0.8)`;
-                    ctx.fill();
-                }
-            }
-
-            pBar += 0.1;
-            if(pBar > 100) pBar = 0;
-            bar.style.width = pBar + "%";
-
-            // Metricas
-            if (frames % 30 === 0) {
-                if (isCrom) {
-                    let simBw = (Math.random() * 2 + 3).toFixed(1); // 3-5 Mbps
-                    bwVal.textContent = simBw + " Mbps";
-                    svVal.textContent = "84%";
-                    svVal.style.color = "var(--brand-alt)";
-                    bwVal.style.color = "#fff";
-                } else {
-                    let simBw = (Math.random() * 5 + 23).toFixed(1); // 23-28 Mbps
-                    bwVal.textContent = simBw + " Mbps";
-                    svVal.textContent = "0%";
-                    svVal.style.color = "#fe5f55";
-                    bwVal.style.color = "#fe5f55";
-                }
-            }
-
-            requestAnimationFrame(render);
+        function addLog(sizeStr, desc, isOptimal=false) {
+            const el = document.createElement('div');
+            el.className = 'pkt';
+            let t = new Date();
+            let timStr = `${t.getMinutes()}:${t.getSeconds()}.${t.getMilliseconds()}`;
+            let color = isOptimal ? '#00ff88' : '#fe5f55';
+            
+            el.innerHTML = `
+                <span class="time">[${timStr}]</span>
+                <span class="size" style="color:${color}">${sizeStr}</span>
+                <span class="desc" style="color:${isOptimal ? '#fff' : '#888'}">${desc}</span>
+            `;
+            logPanel.prepend(el);
+            if(logPanel.children.length > 50) logPanel.removeChild(logPanel.lastChild);
         }
 
-        render();
+        // --- MÁQUINA DE ESTADO DO VÍDEO FAKE ---
+        let frameCount = 0;
+        let isPaused = false;
+        
+        let ball = { x: 50, y: 50, dx: 3, dy: 3 };
+        
+        setInterval(() => {
+            if(isPaused) return;
+            frameCount++;
+            
+            // Fundo dinâmico sintético estático
+            ctx.fillStyle = '#0a0b12';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Renderiza montanhas estilo synthwave
+            ctx.strokeStyle = 'rgba(68, 102, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let x=0; x<canvas.width; x+=40) {
+                let y = canvas.height/1.5 + Math.sin(x*0.02)*40 + Math.cos(x*0.05)*20;
+                if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            }
+            ctx.stroke();
+
+            // Objeto em movimento (O que realmente causa Mutação/Deltas)
+            ball.x += ball.dx; ball.y += ball.dy;
+            if(ball.x < 0 || ball.x > canvas.width) ball.dx *= -1;
+            if(ball.y < 0 || ball.y > canvas.height/1.5) ball.dy *= -1;
+
+            ctx.fillStyle = 'rgba(255, 0, 127, 0.8)';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 40, 0, Math.PI*2);
+            ctx.fill();
+
+            // --- LÓGICA DE DEDUPLICAÇÃO E VISUALIZAÇÃO ---
+            let isCrom = toggle.checked;
+
+            if (isCrom) {
+                renderMode.innerHTML = '<span style="color:#00ff88">Reconstrução WASM Dictionary O(1)</span>';
+                packState.textContent = 'LSH Pointers over HTTP';
+                
+                // Em modo CROM, nós mapeamos onde a bola está (A única coisa que se move).
+                // O fundo (as montanhas e o céu) estão inalterados.
+                
+                let blockX = Math.floor((ball.x / canvas.width) * 10);
+                let blockY = Math.floor((ball.y / canvas.height) * 10);
+                
+                let activeBlocks = 0;
+                for(let i=0; i<100; i++) {
+                    let bx = i % 10;
+                    let by = Math.floor(i / 10);
+                    
+                    // Se a bola tá perto do quadrante, é Delta Puxado (Red)
+                    if(Math.abs(bx - blockX) <= 1 && Math.abs(by - blockY) <= 1) {
+                        domBlocks[i].className = 'macro-block update';
+                        activeBlocks++;
+                    } else {
+                        // Fundo repetido, O(1) deduplication (Green)
+                        domBlocks[i].className = 'macro-block cached';
+                    }
+                }
+
+                // Cálculo de banda: Apenas os blocos ativos trafegam dados reais
+                if (frameCount % 10 === 0) {
+                    // Usando dummy do wasm pra simular hashing overhead de um bloco pequeno
+                    let baseBlockSizeKB = 200; // Kb 
+                    let cromDeltaCost = wasmReady ? window.cromPack(new Uint8Array(10)).cromSize : 15; // fake overhead
+                    
+                    let totalKB = (activeBlocks * cromDeltaCost);
+                    let mbps = ((totalKB * 30) / 1024).toFixed(2); // 30fps
+                    
+                    bwValue.textContent = mbps + " Mbps";
+                    bwValue.className = "bw-value low";
+                    
+                    addLog(`+${mbps}mb`, `Ponteiro LSH B-Tree [${activeBlocks} nodes changed]`, true);
+                }
+
+            } else {
+                renderMode.innerHTML = '<span style="color:#fe5f55;">Canvas 2D Bruto (Full Refresh)</span>';
+                packState.textContent = 'Raw TCP Packets';
+                
+                // Em H264, o quadro inteiro pisca atualizando
+                if (frameCount % 4 === 0) {
+                    for(let i=0; i<100; i++) domBlocks[i].className = 'macro-block update';
+                } else {
+                    for(let i=0; i<100; i++) domBlocks[i].className = 'macro-block';
+                }
+
+                if (frameCount % 10 === 0) {
+                    // Custo alto sempre
+                    let mbps = (20 + Math.random()*5).toFixed(2);
+                    bwValue.textContent = mbps + " Mbps";
+                    bwValue.className = "bw-value high";
+                    addLog(`${mbps}mb`, `Macroblocks I-Frame H264 (Perda integral)` , false);
+                }
+            }
+
+        }, 1000/30); // 30 fps
+
     </script>
 </body>
 </html>
