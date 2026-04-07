@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CROM Live Codec — Compressão ao Vivo de Texto/Imagens</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#050509; --surface:#0c0e18; --border:#181c2e; --cyan:#00d2ff; --green:#00ff88; --red:#ff3366; --gold:#ffbd2e; --purple:#a855f7; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:#ccd; font-family:'Inter',sans-serif; min-height:100vh; display:flex; flex-direction:column; }
+
+        .topbar { display:flex; align-items:center; gap:15px; padding:15px 25px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+        .topbar h1 { font-size:20px; font-weight:800; background:linear-gradient(135deg,var(--purple),var(--cyan)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+        .topbar .badge { background:rgba(168,85,247,0.15); color:var(--purple); padding:4px 10px; border-radius:12px; font-size:10px; font-weight:700; border:1px solid rgba(168,85,247,0.3); }
+        .tabs { display:flex; gap:5px; margin-left:auto; }
+        .tab { padding:8px 16px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; color:#889; transition:0.2s; }
+        .tab.active { background:rgba(0,210,255,0.1); border-color:var(--cyan); color:var(--cyan); }
+
+        .main { flex:1; display:flex; overflow:hidden; }
+
+        .editor-panel { flex:1; display:flex; flex-direction:column; border-right:1px solid var(--border); }
+        .editor-header { padding:10px 20px; background:rgba(0,0,0,0.3); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; font-size:11px; color:#667; font-family:'JetBrains Mono'; }
+        .editor { flex:1; display:flex; }
+        textarea#codeInput { flex:1; background:transparent; border:none; color:#e8e8f8; font-family:'JetBrains Mono'; font-size:13px; padding:20px; resize:none; outline:none; line-height:1.7; }
+        
+        .canvas-panel { flex:1; display:none; flex-direction:column; }
+        .canvas-panel.active { display:flex; }
+        .canvas-header { padding:10px 20px; background:rgba(0,0,0,0.3); border-bottom:1px solid var(--border); display:flex; gap:10px; align-items:center; font-size:11px; }
+        .canvas-area { flex:1; display:flex; align-items:center; justify-content:center; background:#000; position:relative; }
+        canvas#imgCanvas { max-width:100%; max-height:100%; }
+        .canvas-drop { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#667; flex-direction:column; gap:10px; }
+
+        .output-panel { width:420px; background:var(--surface); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+        .out-header { padding:15px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+        .out-header h3 { font-size:13px; color:var(--green); }
+
+        .live-metrics { padding:15px 20px; display:grid; grid-template-columns:1fr 1fr; gap:8px; border-bottom:1px solid var(--border); }
+        .lm { background:#000; padding:10px; border-radius:6px; text-align:center; border:1px solid var(--border); }
+        .lm-val { font-family:'JetBrains Mono'; font-size:18px; font-weight:700; }
+        .lm-lbl { font-size:9px; color:#556; text-transform:uppercase; }
+
+        .compression-viz { flex:1; padding:15px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+        .comp-block { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:6px; font-size:11px; font-family:'JetBrains Mono'; animation:fadeIn 0.2s; }
+        @keyframes fadeIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+        .comp-block.dedup { background:rgba(0,255,136,0.06); border:1px solid rgba(0,255,136,0.15); color:var(--green); }
+        .comp-block.raw { background:rgba(255,51,102,0.06); border:1px solid rgba(255,51,102,0.15); color:var(--red); }
+        .comp-block.hash { background:rgba(0,210,255,0.06); border:1px solid rgba(0,210,255,0.15); color:var(--cyan); font-size:9px; word-break:break-all; }
+
+        .ratio-bar { height:20px; display:flex; border-radius:4px; overflow:hidden; margin:10px 20px; }
+        .ratio-raw { background:var(--red); height:100%; transition:width 0.3s; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; }
+        .ratio-crom { background:var(--green); height:100%; transition:width 0.3s; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#000; }
+
+        @media (max-width:1000px) { .main { flex-direction:column; } .output-panel { width:auto; border-left:none; border-top:1px solid var(--border); max-height:350px; } }
+        @media (max-width:600px) { .tabs { margin-left:0; width:100%; } .live-metrics { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <h1>⚡ CROM Live Codec</h1>
+        <div class="badge">Real-Time WebAssembly Compression</div>
+        <div class="tabs">
+            <div class="tab active" onclick="switchMode('text')">📝 Texto</div>
+            <div class="tab" onclick="switchMode('image')">🖼️ Imagem</div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="editor-panel" id="textPanel">
+            <div class="editor-header">
+                <span>INPUT — Digite ou cole texto em tempo real</span>
+                <span id="charCount">0 chars</span>
+            </div>
+            <div class="editor">
+                <textarea id="codeInput" spellcheck="false" placeholder="Digite qualquer coisa...&#10;&#10;Observe o painel CROM à direita processando cada keystroke em tempo real via WebAssembly.&#10;&#10;Dica: Cole um JSON repetitivo, código-fonte, ou um texto longo para ver a compressão O(1) do LSH atingir ratios extremos."></textarea>
+            </div>
+        </div>
+
+        <div class="canvas-panel" id="imagePanel">
+            <div class="canvas-header">
+                <span style="color:var(--purple);font-weight:700;">INPUT — Arraste uma imagem ou</span>
+                <input type="file" id="imgInput" accept="image/*" style="font-size:11px;color:#aaa;">
+            </div>
+            <div class="canvas-area" id="canvasArea">
+                <canvas id="imgCanvas"></canvas>
+                <div class="canvas-drop" id="canvasDrop">🖼️<br>Arraste uma imagem</div>
+            </div>
+        </div>
+
+        <div class="output-panel">
+            <div class="out-header">
+                <h3>CROM Engine Output</h3>
+                <span style="font-size:10px;color:#667;font-family:'JetBrains Mono';" id="opsCount">0 ops</span>
+            </div>
+
+            <div class="live-metrics">
+                <div class="lm"><div class="lm-val" id="rawSize" style="color:var(--red)">0 B</div><div class="lm-lbl">Raw Input</div></div>
+                <div class="lm"><div class="lm-val" id="cromSize" style="color:var(--green)">0 B</div><div class="lm-lbl">CROM Output</div></div>
+                <div class="lm"><div class="lm-val" id="ratio" style="color:var(--gold)">—</div><div class="lm-lbl">Ratio</div></div>
+                <div class="lm"><div class="lm-val" id="latency" style="color:var(--purple)">— ms</div><div class="lm-lbl">Latência</div></div>
+            </div>
+
+            <div class="ratio-bar">
+                <div class="ratio-raw" id="barRaw" style="width:50%">RAW</div>
+                <div class="ratio-crom" id="barCrom" style="width:50%">CROM</div>
+            </div>
+
+            <div class="compression-viz" id="compViz">
+                <div style="color:#556;font-size:12px;">Aguardando input...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../12-crom-wasm-core/wasm_exec.js"></script>
+    <script src="../crom-bridge.js"></script>
+    <script>
+        const codeInput = document.getElementById('codeInput');
+        const compViz = document.getElementById('compViz');
+        const imgCanvas = document.getElementById('imgCanvas');
+        const imgCtx = imgCanvas.getContext('2d');
+        let mode = 'text';
+        let hashDict = {};
+        let opCount = 0;
+        let debounceTimer = null;
+
+        function formatBytes(b){ if(!b)return'0 B'; const k=1024,s=['B','KB','MB','GB']; const i=Math.floor(Math.log(b)/Math.log(k)); return (b/Math.pow(k,i)).toFixed(1)+' '+s[i]; }
+
+        function switchMode(m) {
+            mode = m;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab:nth-child(${m==='text'?1:2})`).classList.add('active');
+            document.getElementById('textPanel').style.display = m==='text' ? 'flex' : 'none';
+            document.getElementById('imagePanel').classList.toggle('active', m==='image');
+        }
+
+        function addBlock(type, content) {
+            const el = document.createElement('div');
+            el.className = `comp-block ${type}`;
+            el.textContent = content;
+            compViz.prepend(el);
+            if(compViz.children.length > 80) compViz.removeChild(compViz.lastChild);
+        }
+
+        function processData(uint8) {
+            if(!cromBridge.isReady()) return;
+
+            const t0 = performance.now();
+            const result = cromBridge.compress(uint8);
+            const elapsed = performance.now() - t0;
+            if(!result) return;
+
+            opCount++;
+            const hash = result.hash;
+
+            // Check dedup
+            if(hashDict[hash]) {
+                hashDict[hash]++;
+                addBlock('dedup', `🔗 DEDUP #${hashDict[hash]} → Ponteiro 4B (Hash já conhecido)`);
+            } else {
+                hashDict[hash] = 1;
+                addBlock('raw', `📦 NOVO → ${formatBytes(result.cromSize)} | Ratio ${(result.originalSize/result.cromSize).toFixed(1)}:1`);
+            }
+            addBlock('hash', `0x${hash}`);
+
+            // Update metrics
+            const stats = cromBridge.getStats();
+            document.getElementById('rawSize').textContent = formatBytes(stats.totalOriginal);
+            document.getElementById('cromSize').textContent = formatBytes(stats.totalCompressed);
+            document.getElementById('ratio').textContent = stats.totalCompressed > 0 ? (stats.totalOriginal / stats.totalCompressed).toFixed(2) + ':1' : '—';
+            document.getElementById('latency').textContent = elapsed.toFixed(2) + ' ms';
+            document.getElementById('opsCount').textContent = opCount + ' ops';
+            document.getElementById('charCount').textContent = uint8.length + ' chars';
+
+            // Ratio bar
+            const total = stats.totalOriginal + stats.totalCompressed;
+            if(total > 0) {
+                const rawPct = (stats.totalOriginal / total * 100);
+                const cromPct = (stats.totalCompressed / total * 100);
+                document.getElementById('barRaw').style.width = rawPct + '%';
+                document.getElementById('barCrom').style.width = cromPct + '%';
+                document.getElementById('barRaw').textContent = 'RAW ' + rawPct.toFixed(0) + '%';
+                document.getElementById('barCrom').textContent = 'CROM ' + cromPct.toFixed(0) + '%';
+            }
+        }
+
+        // Text: live compression on every keystroke (debounced 150ms)
+        codeInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const text = codeInput.value;
+                if(!text) return;
+
+                // Split into lines and compress each line individually for granular view  
+                const lines = text.split('\n').filter(l => l.length > 0);
+                if(lines.length > 0) {
+                    const lastLine = lines[lines.length - 1];
+                    const uint8 = new TextEncoder().encode(lastLine);
+                    processData(uint8);
+                }
+
+                // Also compress full text
+                const fullUint8 = new TextEncoder().encode(text);
+                processData(fullUint8);
+            }, 150);
+        });
+
+        // Image mode
+        const canvasArea = document.getElementById('canvasArea');
+        const canvasDrop = document.getElementById('canvasDrop');
+        const imgInput = document.getElementById('imgInput');
+
+        canvasArea.addEventListener('dragover', e => { e.preventDefault(); });
+        canvasArea.addEventListener('drop', e => { e.preventDefault(); handleImage(e.dataTransfer.files[0]); });
+        imgInput.addEventListener('change', e => { handleImage(e.target.files[0]); });
+
+        function handleImage(file) {
+            if(!file || !file.type.startsWith('image/')) return;
+            canvasDrop.style.display = 'none';
+
+            const img = new Image();
+            img.onload = () => {
+                // Scale down for performance
+                const maxDim = 512;
+                let w = img.width, h = img.height;
+                if(w > maxDim || h > maxDim) {
+                    const scale = maxDim / Math.max(w, h);
+                    w = Math.floor(w * scale);
+                    h = Math.floor(h * scale);
+                }
+                imgCanvas.width = w;
+                imgCanvas.height = h;
+                imgCtx.drawImage(img, 0, 0, w, h);
+
+                // Compress raw pixel data via WASM
+                const imageData = imgCtx.getImageData(0, 0, w, h);
+                const totalPixels = imageData.data.length;
+
+                addBlock('raw', `🖼️ Imagem: ${w}×${h} = ${formatBytes(totalPixels)} de pixels RGBA`);
+
+                // Compress in 4KB chunks for realistic view
+                const CHUNK = 4096;
+                for(let i = 0; i < totalPixels; i += CHUNK) {
+                    const slice = imageData.data.slice(i, i + CHUNK);
+                    processData(new Uint8Array(slice));
+                }
+            };
+            img.src = URL.createObjectURL(file);
+        }
+    </script>
+</body>
+</html>

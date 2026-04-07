@@ -194,6 +194,42 @@ const simulators = [
     tags: ["web", "p2p", "vfs"],
     href: "../simuladores/21-web-drive/index.html",
     accent: "#00d4ff"
+  },
+  {
+    num: "22",
+    title: "File Forensics",
+    desc: "Análise forense byte-a-byte de qualquer arquivo. Entropia Shannon, mapa de bytes, hash LSH — tudo via WASM real.",
+    icon: "🔬",
+    tags: ["web", "wasm", "ui"],
+    href: "../simuladores/22-crom-file-forensics/index.html",
+    accent: "#ff3366"
+  },
+  {
+    num: "23",
+    title: "Entropy Scanner",
+    desc: "Mapa de calor de entropia em tempo real. Cada chunk de 64B é comprimido via WASM e classificado por compressibilidade.",
+    icon: "🔍",
+    tags: ["web", "wasm", "sim"],
+    href: "../simuladores/23-entropy-scanner/index.html",
+    accent: "#00ff88"
+  },
+  {
+    num: "24",
+    title: "Live Codec",
+    desc: "Compressão ao vivo keystroke-por-keystroke. Texto e imagens passam pelo cromPack em tempo real com dedup tracking.",
+    icon: "⚡",
+    tags: ["web", "wasm", "ui"],
+    href: "../simuladores/24-live-codec/index.html",
+    accent: "#a855f7"
+  },
+  {
+    num: "25",
+    title: "Cognitive Trainer",
+    desc: "Crompressor V4.3: O salto do LSH Sintático para Entendimento Semântico (Global Brain + Tensores DNA).",
+    icon: "🧠",
+    tags: ["web", "ai", "sim"],
+    href: "../simuladores/25-cognitive-codebook-trainer/index.html",
+    accent: "#ffbd2e"
   }
 
 ];
@@ -296,15 +332,22 @@ window.addEventListener('resize', resize);
 const bgParticles = [];
 const PARTICLE_COUNT = 80;
 
+// Seeded PRNG for deterministic particle positions (não é fake data, é estética reproduzível)
+function hubRNG(seed) {
+  let s = seed;
+  return function() { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+}
+const _rng = hubRNG(2026);
+
 for (let i = 0; i < PARTICLE_COUNT; i++) {
   bgParticles.push({
-    x: Math.random() * W,
-    y: Math.random() * H,
-    vx: (Math.random() - 0.5) * 0.3,
-    vy: (Math.random() - 0.5) * 0.3,
-    r: Math.random() * 2 + 0.5,
-    hue: 220 + Math.random() * 40,
-    alpha: Math.random() * 0.3 + 0.1
+    x: _rng() * W,
+    y: _rng() * H,
+    vx: (_rng() - 0.5) * 0.3,
+    vy: (_rng() - 0.5) * 0.3,
+    r: _rng() * 2 + 0.5,
+    hue: 220 + _rng() * 40,
+    alpha: _rng() * 0.3 + 0.1
   });
 }
 

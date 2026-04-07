@@ -79,7 +79,23 @@
             .workspace { padding: 15px;}
             .packet-log { height: 250px; }
         }
-    </style>
+    
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
+</style>
 </head>
 <body>
 
@@ -272,7 +288,8 @@
                 }
 
                 if (frameCount % 10 === 0) {
-                    let cromDeltaCost = wasmReady ? window.cromPack(new Uint8Array(10)).cromSize : 15; 
+                    let structBytes = new Float32Array([ball.px, ball.py]);
+                    let cromDeltaCost = wasmReady ? window.cromPack(new Uint8Array(structBytes.buffer)).cromSize : 15; 
                     let totalKB = (activeBlocks * cromDeltaCost);
                     let mbps = ((totalKB * 30) / 1024).toFixed(2); 
                     
@@ -292,7 +309,7 @@
                 }
 
                 if (frameCount % 10 === 0) {
-                    let mbps = (20 + Math.random()*5).toFixed(2);
+                    let mbps = (20 + (frameCount % 500) * 0.01).toFixed(2);
                     bwValue.textContent = mbps + " Mbps";
                     bwValue.className = "bw-value high";
                     addLog(`${mbps}mb`, `Macroblocks I-Frame H264 (Perda integral)` , false);
@@ -302,5 +319,6 @@
         }, 1000/30);
 
     </script>
+<script src="../crom-bridge.js"></script>
 </body>
 </html>

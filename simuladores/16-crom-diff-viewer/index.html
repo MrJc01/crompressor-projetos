@@ -99,7 +99,23 @@
             background: rgba(254, 95, 85, 0.1); border: 1px solid var(--error-color); color: var(--error-color);
         }
 
-    </style>
+    
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
+</style>
 </head>
 <body>
     
@@ -243,60 +259,46 @@ const NODE = 8091;
             return p;
         }
 
-        // Lógica Principal de Simulação Educativa
+        // Lógica Principal de Simulação Educativa Nível O(1) Real
         function processLSH() {
             const t1 = v1.value;
             const t2 = v2.value;
 
-            // O Git usa diff linha a linha. Se as linhas mudaram, o custo sobe.
-            // Para fim de simulação visual de peso, usaremos o tamanho da String t2 modificada menos as partes intocadas.
-            let gitDiffCost = t2.length; // No pior caso de shift, o git manda o arquivo inteiro
-
             packetStream.innerHTML = '';
             
-            // Chunking visual para a explicação didática
-            // Vamos quebrar V2 em parágrafos. Se o V1 tiver o parágrafo inteiro indêntico,
-            // O CROM manda apenas o Hash.
+            // O gitDiffCost real é o tamanho natural da string nova (num cenário de envio completo se houver shift maciço)
+            // Vamos adotar o tamanho raw do base blob como pior caso do Git sem truques matemáticos.
+            let rawGitBytes = new Blob([t2]).size;
+
+            // Pega o custo VERDADEIRO do motor WebAssembly
+            let realCromRes = packData(t2);
+            let totalCromCost = realCromRes.cromSize;
+            
+            // Chunking visual apenas para a explicação didática no painel
             let chunks2 = t2.split('\n\n');
             let chunks1 = t1.split('\n\n');
 
-            let totalCromCost = 0;
-            let finalGitCost = 0;
-
             chunks2.forEach((chunk) => {
                 if(chunk.trim() === '') return;
-
-                // Checa no Base se existe esse contexto semântico (Overlap)
                 let isCached = chunks1.includes(chunk);
 
                 if (isCached) {
-                    // O(1) deduplication: Manda so a HASH (usando o WASM pra gerar a hash)
                     let wRes = packData(chunk);
-                    let pointerCostBytes = 4; // Um int32 pointer virtual
-                    totalCromCost += pointerCostBytes;
-                    packetStream.appendChild(createPacketUI('pointer', wRes.hash.substring(0,8).toUpperCase(), pointerCostBytes));
+                    // O(1) deduplication: Manda so a HASH (usando o WASM pra gerar a hash)
+                    packetStream.appendChild(createPacketUI('pointer', wRes.hash.substring(0,8).toUpperCase(), 4));
                 } else {
-                    // Texto Inédito. Manda os bytes totais.
                     let rawBytes = new Blob([chunk]).size;
-                    totalCromCost += rawBytes;
-                    finalGitCost += rawBytes; // Git sempre manda o que é novo, mas tbm manda o que shiftou
                     packetStream.appendChild(createPacketUI('raw', chunk, rawBytes));
                 }
             });
 
-            // Fake Git overhead if line shifted
-            if (t1 !== t2) {
-                finalGitCost = Math.max(finalGitCost * 2.5, new Blob([t2]).size * 0.4); 
-            } else {
-                finalGitCost = 0;
-            }
-
-            gitCost.textContent = Math.floor(finalGitCost) + " Bytes";
+            gitCost.textContent = rawGitBytes + " Bytes";
             cromCost.textContent = totalCromCost + " Bytes";
         }
 
         v2.addEventListener('input', processLSH);
 
     </script>
+<script src="../crom-bridge.js"></script>
 </body>
 </html>

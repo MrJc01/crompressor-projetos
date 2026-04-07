@@ -10,6 +10,22 @@ h1{font-size:15px;color:#40ff80;margin-bottom:8px}.s{color:#6688cc;margin:4px 0;
 .btn{display:inline-block;padding:6px 14px;background:#0a200a;border:1px solid #308030;border-radius:6px;color:#88ff88;cursor:pointer;font-size:11px;margin:3px;font-family:inherit;transition:all .2s}
 .btn:hover{background:#104010;transform:translateY(-1px)}
 #seq{word-break:break-all;font-size:9px;color:#40ff80;margin-top:10px;max-height:50px;overflow:auto;background:rgba(0,40,0,0.3);padding:6px;border-radius:4px}
+
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
 </style>
 </head>
 <body>
@@ -34,6 +50,10 @@ h1{font-size:15px;color:#40ff80;margin-bottom:8px}.s{color:#6688cc;margin:4px 0;
 </div>
 <canvas id="c"></canvas>
 <script>
+// Fast Mulberry32 PRNG — deterministic + high-performance
+let _s32 = 42;
+function rand() { _s32 |= 0; _s32 = _s32 + 0x6D2B79F5 | 0; let t = Math.imul(_s32 ^ _s32 >>> 15, 1 | _s32); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+
 const C=document.getElementById('c'),X=C.getContext('2d');let W,H;
 function resize(){W=C.width=innerWidth;H=C.height=innerHeight}resize();window.onresize=resize;
 const AA='ACDEFGHIKLMNPQRSTVWY';
@@ -51,13 +71,13 @@ function genProtein(n){
   let modeLen=0,modeMax=8;
 
   for(let i=0;i<n;i++){
-    let aa=AA[Math.floor(Math.random()*AA.length)];seq+=aa;
+    let aa=AA[Math.floor(rand()*AA.length)];seq+=aa;
 
     // Switch secondary structure modes randomly
     if(modeLen>=modeMax){
-      let r=Math.random();
+      let r=rand();
       if(r<0.4)mode='helix';else if(r<0.7)mode='sheet';else mode='coil';
-      modeLen=0;modeMax=5+Math.floor(Math.random()*12);
+      modeLen=0;modeMax=5+Math.floor(rand()*12);
     }
 
     if(mode==='helix'){
@@ -73,12 +93,12 @@ function genProtein(n){
       let zigzag=(i%2===0)?1.5:-1.5;
       x+=3.2;
       y+=zigzag;
-      z+=(Math.random()-0.5)*4;
+      z+=(rand()-0.5)*4;
     } else {
       // Random coil: more compact turns
-      let theta=Math.random()*Math.PI*2;
-      let phi=Math.random()*Math.PI-Math.PI/2;
-      let step=2+Math.random()*2;
+      let theta=rand()*Math.PI*2;
+      let phi=rand()*Math.PI-Math.PI/2;
+      let step=2+rand()*2;
       x+=Math.cos(theta)*Math.cos(phi)*step;
       y+=Math.sin(phi)*step;
       z+=Math.sin(theta)*Math.cos(phi)*step;
@@ -110,13 +130,13 @@ function genProtein(n){
     for(let j=i+4;j<n;j++){
       let dx=atoms[i].x-atoms[j].x,dy=atoms[i].y-atoms[j].y,dz=atoms[i].z-atoms[j].z;
       let d=Math.sqrt(dx*dx+dy*dy+dz*dz);
-      if(d<4&&Math.random()<0.3){
+      if(d<4&&rand()<0.3){
         hbonds.push({a:i,b:j});
       }
     }
   }
 
-  energy=-Math.floor(Math.random()*300+n*3);
+  energy=-Math.floor(rand()*300+n*3);
   document.getElementById('seq').textContent=seq;
   document.getElementById('info').textContent=`Aminoácidos: ${n} | Energia: ${energy} kcal/mol | H-bonds: ${hbonds.length}`;
 }
@@ -232,6 +252,17 @@ C.addEventListener('mousemove',e=>{
 C.addEventListener('wheel',e=>{e.preventDefault();let f=e.deltaY>0?0.92:1.08;zoomLevel*=f;zoomLevel=Math.max(0.5,zoomLevel);},{passive:false});
 C.addEventListener('contextmenu',e=>e.preventDefault());
 genProtein(150);draw();
+</script>
+<script src="../crom-bridge.js"></script>
+<script>
+
+    // CROM: Comprimir coordenadas moleculares 3D
+    setInterval(() => {
+        if(!cromBridge.isReady()) return;
+        const c = document.querySelector('canvas');
+        if(c) { const ctx = c.getContext('2d'); const d = ctx.getImageData(0,0,Math.min(c.width,256),Math.min(c.height,256)); cromBridge.compress(d.data); }
+    }, 5000);
+    
 </script>
 </body>
 </html>

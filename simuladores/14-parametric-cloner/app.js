@@ -87,8 +87,29 @@ paletteSlider.addEventListener('input', (e) => {
 });
 
 document.getElementById('renderBtn').addEventListener('click', () => {
-    // Simula a escrita de um arquivo .crom
-    alert("Arquivo exportado paramétrico.crom gerado! Tamanho: 2.1KB (A imagem matriz de 4MB nunca foi alterada).");
+    if (!cromBridge.isReady()) {
+        alert("Aguarde o carregamento do motor WASM...");
+        return;
+    }
+    
+    // Pega a imagem atual renderizada no canvas e extrai seus dados
+    const renderData = ctx.getImageData(0, 0, W, H);
+    
+    // Comprime os bytes da imagem usando o motor LSH nativo real
+    const t0 = performance.now();
+    const result = cromBridge.compress(renderData.data);
+    const t1 = performance.now();
+    
+    if (result) {
+        const ratio = (result.originalSize / result.cromSize).toFixed(2);
+        alert(`Exportação Real Concluída via CROM WASM!
+Tamanho Original Raw: ${(result.originalSize / 1024).toFixed(1)} KB
+Tamanho CROM LSH: ${(result.cromSize / 1024).toFixed(1)} KB
+Taxa de Compressão: ${ratio}:1
+Latência WASM: ${(t1 - t0).toFixed(2)} ms`);
+    } else {
+        alert("Falha na compressão WASM.");
+    }
 });
 
 // Init

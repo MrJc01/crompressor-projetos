@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CROM Entropy Scanner — Mapa de Entropia em Tempo Real</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#050508; --surface:#0d0f18; --border:#1a1d2e; --cyan:#00d2ff; --green:#00ff88; --red:#ff3366; --gold:#ffbd2e; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:#c8d0e0; font-family:'Inter',sans-serif; display:flex; height:100vh; overflow:hidden; }
+
+        .sidebar { width:380px; background:var(--surface); border-right:1px solid var(--border); padding:25px; display:flex; flex-direction:column; gap:18px; overflow-y:auto; }
+        h1 { font-size:22px; font-weight:800; background:linear-gradient(135deg,var(--green),var(--cyan)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+        .badge { background:rgba(0,210,255,0.1); color:var(--cyan); padding:4px 12px; border-radius:20px; font-size:10px; font-weight:700; border:1px solid rgba(0,210,255,0.3); display:inline-block; }
+
+        .info-box { background:rgba(0,0,0,0.3); border-left:3px solid var(--cyan); padding:15px; border-radius:8px; font-size:13px; line-height:1.6; color:#8b949e; }
+        .info-box strong { color:#fff; }
+
+        textarea { width:100%; height:200px; background:#000; border:1px solid var(--border); color:var(--green); font-family:'JetBrains Mono'; font-size:12px; padding:12px; border-radius:8px; resize:vertical; outline:none; }
+        textarea:focus { border-color:var(--cyan); }
+
+        button { background:linear-gradient(135deg,#0f4c75,#1b262c); border:1px solid var(--cyan); color:#fff; padding:12px; border-radius:8px; font-weight:700; cursor:pointer; transition:0.2s; }
+        button:hover { transform:translateY(-2px); box-shadow:0 4px 15px rgba(0,210,255,0.2); }
+
+        .metrics { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .m-box { background:#000; border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center; }
+        .m-val { font-family:'JetBrains Mono'; font-size:20px; font-weight:700; }
+        .m-lbl { font-size:9px; color:#667; text-transform:uppercase; letter-spacing:1px; }
+
+        .workspace { flex:1; display:flex; flex-direction:column; padding:20px; gap:15px; overflow:hidden; }
+
+        .heatmap-container { flex:1; background:#000; border:1px solid var(--border); border-radius:12px; overflow:hidden; position:relative; }
+        canvas { width:100%; height:100%; display:block; }
+        .hm-label { position:absolute; top:12px; left:12px; font-size:10px; color:var(--cyan); font-family:'JetBrains Mono'; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:4px; z-index:5; }
+
+        .chunk-stream { height:180px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:15px; overflow-y:auto; font-family:'JetBrains Mono'; font-size:11px; }
+        .chunk { display:flex; gap:10px; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+        .chunk .idx { color:#667; min-width:40px; }
+        .chunk .hash { color:var(--cyan); min-width:140px; }
+        .chunk .size { color:var(--green); min-width:60px; text-align:right; }
+        .chunk .ent { color:var(--gold); }
+
+        @media (max-width:900px) {
+            body { flex-direction:column; overflow-y:auto; }
+            .sidebar { width:auto; border-right:none; border-bottom:1px solid var(--border); }
+        }
+        @media (max-width:600px) {
+            .metrics { grid-template-columns:1fr; }
+            .sidebar { padding:15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1>🔍 Entropy Scanner</h1>
+        <div class="badge">CROM WASM Real-Time Analysis</div>
+
+        <div class="info-box">
+            <strong>O que faz:</strong> Cole ou digite qualquer texto. O motor WASM fraciona em chunks, calcula a entropia de Shannon de cada fatia, e gera um mapa de calor visual. Quanto mais <b style="color:var(--red)">vermelho</b>, maior a aleatoriedade (incompressível). Quanto mais <b style="color:var(--green)">verde</b>, mais repetitivo (alta compressão LSH).
+        </div>
+
+        <textarea id="inputArea" placeholder="Cole texto, JSON, código-fonte, logs — qualquer coisa...">{"level":"INFO","service":"api-gateway","endpoint":"/v1/users","status":200,"agent":"Mozilla/5.0","timestamp":"1712450000"}
+{"level":"INFO","service":"api-gateway","endpoint":"/v1/users","status":200,"agent":"Mozilla/5.0","timestamp":"1712450001"}
+{"level":"ERROR","service":"db-node","endpoint":"/health","status":500,"agent":"curl/7.88","timestamp":"1712450002"}
+{"level":"INFO","service":"api-gateway","endpoint":"/v1/users","status":200,"agent":"Mozilla/5.0","timestamp":"1712450003"}
+function fibonacci(n) { if(n<=1) return n; return fibonacci(n-1) + fibonacci(n-2); }
+function fibonacci(n) { if(n<=1) return n; return fibonacci(n-1) + fibonacci(n-2); }
+AAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBCCCCCCCCCCDDDDDDDEEEEE
+x9#kL2!@mZ8pQ7wR5tY0uI3oA6sD4fG1hJ&amp;nB*vC$eX%zW^qM</textarea>
+
+        <button onclick="analyze()">⚡ Analisar com Motor WASM</button>
+
+        <div class="metrics">
+            <div class="m-box"><div class="m-val" id="mRaw" style="color:var(--red)">0 B</div><div class="m-lbl">Raw</div></div>
+            <div class="m-box"><div class="m-val" id="mCrom" style="color:var(--green)">0 B</div><div class="m-lbl">CROM</div></div>
+            <div class="m-box"><div class="m-val" id="mEntropy" style="color:var(--gold)">0.00</div><div class="m-lbl">Entropia Média</div></div>
+            <div class="m-box"><div class="m-val" id="mChunks" style="color:var(--cyan)">0</div><div class="m-lbl">Chunks</div></div>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="heatmap-container">
+            <div class="hm-label" id="hmLabel">Mapa de Entropia — Escaneie o texto acima</div>
+            <canvas id="heatmap"></canvas>
+        </div>
+        <div class="chunk-stream" id="chunkStream">
+            <div style="color:#667;">Chunks WASM aparecerão aqui após a análise...</div>
+        </div>
+    </div>
+
+    <script src="../12-crom-wasm-core/wasm_exec.js"></script>
+    <script src="../crom-bridge.js"></script>
+    <script>
+        const canvas = document.getElementById('heatmap');
+        const ctx = canvas.getContext('2d');
+        const chunkStream = document.getElementById('chunkStream');
+
+        function resize() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        function formatBytes(b) { if(!b) return '0 B'; const k=1024,s=['B','KB','MB']; const i=Math.floor(Math.log(b)/Math.log(k)); return (b/Math.pow(k,i)).toFixed(1)+' '+s[i]; }
+
+        function shannonEntropy(data) {
+            const freq = new Uint32Array(256);
+            for(let i=0; i<data.length; i++) freq[data[i]]++;
+            let e = 0;
+            for(let i=0; i<256; i++) { if(!freq[i]) continue; const p = freq[i]/data.length; e -= p * Math.log2(p); }
+            return e;
+        }
+
+        // Color from entropy: 0=green (compressible), 8=red (random)
+        function entropyColor(e) {
+            const t = e / 8;
+            const r = Math.floor(t * 255);
+            const g = Math.floor((1-t) * 255);
+            return `rgb(${r},${g},40)`;
+        }
+
+        async function analyze() {
+            // Wait for WASM
+            let retries = 0;
+            while(!cromBridge.isReady() && retries < 30) { await new Promise(r=>setTimeout(r,100)); retries++; }
+
+            const text = document.getElementById('inputArea').value;
+            if(!text) return;
+
+            const encoder = new TextEncoder();
+            const fullBytes = encoder.encode(text);
+
+            // Full compression
+            const fullResult = cromBridge.compress(fullBytes);
+
+            // Chunk into 64-byte blocks
+            const CHUNK_SIZE = 64;
+            const chunks = [];
+            for(let i = 0; i < fullBytes.length; i += CHUNK_SIZE) {
+                const slice = fullBytes.slice(i, i + CHUNK_SIZE);
+                const ent = shannonEntropy(slice);
+                const res = cromBridge.compress(slice);
+                chunks.push({ offset: i, data: slice, entropy: ent, result: res });
+            }
+
+            // Update metrics
+            document.getElementById('mRaw').textContent = formatBytes(fullResult ? fullResult.originalSize : fullBytes.length);
+            document.getElementById('mCrom').textContent = formatBytes(fullResult ? fullResult.cromSize : 0);
+            const avgEntropy = chunks.reduce((s,c) => s + c.entropy, 0) / chunks.length;
+            document.getElementById('mEntropy').textContent = avgEntropy.toFixed(3);
+            document.getElementById('mChunks').textContent = chunks.length;
+
+            // Draw heatmap
+            resize();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const cols = Math.ceil(Math.sqrt(chunks.length * (canvas.width / canvas.height)));
+            const rows = Math.ceil(chunks.length / cols);
+            const cellW = canvas.width / cols;
+            const cellH = canvas.height / rows;
+
+            chunks.forEach((chunk, idx) => {
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                const x = col * cellW;
+                const y = row * cellH;
+
+                ctx.fillStyle = entropyColor(chunk.entropy);
+                ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+
+                // Draw small entropy number if cells are big enough
+                if(cellW > 30 && cellH > 20) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    ctx.font = '9px JetBrains Mono';
+                    ctx.fillText(chunk.entropy.toFixed(1), x + 4, y + cellH - 4);
+                }
+            });
+
+            document.getElementById('hmLabel').textContent = `Mapa de Entropia — ${chunks.length} chunks × ${CHUNK_SIZE}B | Média: ${avgEntropy.toFixed(3)} bits`;
+
+            // Populate chunk stream
+            chunkStream.innerHTML = '';
+            chunks.forEach((chunk, idx) => {
+                const el = document.createElement('div');
+                el.className = 'chunk';
+                const hash = chunk.result ? chunk.result.hash.substring(0,16) : '—';
+                const size = chunk.result ? chunk.result.cromSize : chunk.data.length;
+                el.innerHTML = `
+                    <span class="idx">#${idx.toString().padStart(3,'0')}</span>
+                    <span class="hash">0x${hash}</span>
+                    <span class="size">${size}B</span>
+                    <span class="ent">H=${chunk.entropy.toFixed(3)}</span>
+                `;
+                chunkStream.appendChild(el);
+            });
+        }
+
+        // Auto-analyze on load after WASM ready
+        setTimeout(analyze, 1500);
+    </script>
+</body>
+</html>

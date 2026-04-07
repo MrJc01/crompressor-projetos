@@ -19,6 +19,22 @@
 .win-close{width:20px;height:20px;background:#ff4444;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
 .win-body{padding:10px;color:#ccc;font-size:12px;height:calc(100% - 30px);overflow:auto}
 #terminal-input{background:transparent;border:none;color:#40ff80;font-family:monospace;font-size:12px;outline:none;width:90%}
+
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
 </style>
 </head>
 <body>
@@ -33,13 +49,17 @@
 <div id="clock"></div>
 </div>
 <script>
+// Fast Mulberry32 PRNG — deterministic + high-performance
+let _s32 = 42;
+function rand() { _s32 |= 0; _s32 = _s32 + 0x6D2B79F5 | 0; let t = Math.imul(_s32 ^ _s32 >>> 15, 1 | _s32); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+
 let winZ=100,wins=[];
 const FS={'~':{type:'dir',children:{'Documents':{type:'dir',children:{'readme.txt':{type:'file',content:'CROM V23 Singularity OS\nRunning in browser.'},'notes.md':{type:'file',content:'# Todo\n- Compress universe\n- Deploy to edge'}}},'Desktop':{type:'dir',children:{}},'system.log':{type:'file',content:'[OK] Kernel loaded\n[OK] Filesystem mounted\n[OK] Network ready'}}}};
 
 function createWindow(title,w,h,content){
   let win=document.createElement('div');win.className='win';
   win.style.width=w+'px';win.style.height=h+'px';
-  win.style.left=80+Math.random()*300+'px';win.style.top=40+Math.random()*200+'px';
+  win.style.left=80+rand()*300+'px';win.style.top=40+rand()*200+'px';
   win.style.zIndex=++winZ;
   win.innerHTML=`<div class="win-title"><span>${title}</span><div class="win-close" onclick="this.closest('.win').remove()">✕</div></div><div class="win-body">${content}</div>`;
   document.getElementById('desktop').appendChild(win);
@@ -74,7 +94,7 @@ function openApp(app){
   }else if(app==='sysmon'){
     let w=createWindow('📊 System Monitor',380,250,'<canvas id="sysmon-canvas" width="360" height="200"></canvas>');
     let sc=w.querySelector('#sysmon-canvas'),sx=sc.getContext('2d'),cpu=[],mem=[];
-    setInterval(()=>{cpu.push(20+Math.random()*60);mem.push(40+Math.random()*30);if(cpu.length>60)cpu.shift();if(mem.length>60)mem.shift();
+    setInterval(()=>{cpu.push(20+rand()*60);mem.push(40+rand()*30);if(cpu.length>60)cpu.shift();if(mem.length>60)mem.shift();
       sx.fillStyle='#1e1e2e';sx.fillRect(0,0,360,200);sx.font='10px monospace';sx.fillStyle='#888';sx.fillText('CPU %',5,12);sx.fillText('MEM %',5,112);
       sx.strokeStyle='#40ff80';sx.lineWidth=1.5;sx.beginPath();cpu.forEach((v,i)=>{let x=i*6,y=90-v*0.8;i===0?sx.moveTo(x,y):sx.lineTo(x,y)});sx.stroke();
       sx.strokeStyle='#ff8040';sx.beginPath();mem.forEach((v,i)=>{let x=i*6,y=190-v*0.8;i===0?sx.moveTo(x,y):sx.lineTo(x,y)});sx.stroke();
@@ -103,6 +123,17 @@ function termKey(e){
 function toggleMenu(){openApp('terminal')}
 setInterval(()=>{let d=new Date();document.getElementById('clock').textContent=d.toLocaleTimeString()},1000);
 openApp('terminal');
+</script>
+<script src="../crom-bridge.js"></script>
+<script>
+
+    // CROM: Comprimir filesystem virtual do OS
+    setInterval(() => {
+        if(!cromBridge.isReady()) return;
+        const fsData = JSON.stringify(typeof FS !== 'undefined' ? FS : {});
+        cromBridge.compress(fsData);
+    }, 5000);
+    
 </script>
 </body>
 </html>

@@ -9,6 +9,22 @@ canvas{display:block}#hud{position:fixed;top:15px;left:15px;background:rgba(0,10
 h1{font-size:14px;color:#40ff40;margin-bottom:8px}.s{color:#669966;margin:3px 0}
 .btn{display:inline-block;padding:5px 12px;background:#0a200a;border:1px solid #308030;border-radius:4px;color:#88ff88;cursor:pointer;font-size:10px;margin:2px;font-family:inherit}.btn:hover{background:#104010}
 .hint{font-size:9px;color:#446644;margin-top:8px;line-height:1.6;border-top:1px solid #1a301a;padding-top:8px}
+
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
 </style>
 </head>
 <body>
@@ -32,6 +48,10 @@ h1{font-size:14px;color:#40ff40;margin-bottom:8px}.s{color:#669966;margin:3px 0}
 </div>
 <canvas id="c"></canvas>
 <script>
+// Fast Mulberry32 PRNG — deterministic + high-performance
+let _s32 = 42;
+function rand() { _s32 |= 0; _s32 = _s32 + 0x6D2B79F5 | 0; let t = Math.imul(_s32 ^ _s32 >>> 15, 1 | _s32); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+
 const C=document.getElementById('c'),X=C.getContext('2d');let W,H;
 function resize(){W=C.width=innerWidth;H=C.height=innerHeight}resize();window.onresize=resize;
 
@@ -52,7 +72,7 @@ function project(x,y,z){
 function unproject(sx,sy){return{x:(sx-W/2-panX)*camDist/600,y:0,z:-(sy-H/2-panY)*camDist/600}}
 
 let creatures=[],food=[],gen=0;
-function rnd(a,b){return a+Math.random()*(b-a)}
+function rnd(a,b){return a+rand()*(b-a)}
 function dist3(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2+(a.z-b.z)**2)}
 
 // Terrain height function
@@ -63,8 +83,8 @@ function terrain(x,z){
 class Creature{
   constructor(x,z,dna){
     this.x=x;this.z=z;this.y=terrain(x,z);
-    this.dna=dna||{speed:rnd(0.8,3),size:rnd(2,6),sense:rnd(40,140),r:Math.random(),g:Math.random(),b:Math.random(),aggression:Math.random()};
-    this.energy=100;this.age=0;this.dir=Math.random()*Math.PI*2;
+    this.dna=dna||{speed:rnd(0.8,3),size:rnd(2,6),sense:rnd(40,140),r:rand(),g:rand(),b:rand(),aggression:rand()};
+    this.energy=100;this.age=0;this.dir=rand()*Math.PI*2;
     this.predator=this.dna.aggression>0.8;
   }
   update(){
@@ -87,8 +107,8 @@ class Creature{
     }else{
       creatures.forEach(c=>{if(c!==this&&!c.predator&&dist3(this,c)<this.dna.size+c.dna.size+2){this.energy+=50;c.energy=-1;}});
     }
-    if(this.energy>150&&Math.random()<0.01){
-      let cd={...this.dna};let keys=Object.keys(cd);let k=keys[Math.floor(Math.random()*keys.length)];
+    if(this.energy>150&&rand()<0.01){
+      let cd={...this.dna};let keys=Object.keys(cd);let k=keys[Math.floor(rand()*keys.length)];
       if(typeof cd[k]==='number')cd[k]*=rnd(0.85,1.15);
       cd.aggression=Math.max(0,Math.min(1,cd.aggression));
       creatures.push(new Creature(this.x+rnd(-10,10),this.z+rnd(-10,10),cd));
@@ -103,7 +123,7 @@ function addPredator(){
   let dna={speed:rnd(2,4.5),size:rnd(5,10),sense:rnd(80,200),r:1,g:0.2,b:0.1,aggression:0.95};
   creatures.push(new Creature(rnd(-WORLD,WORLD),rnd(-WORLD,WORLD),dna));
 }
-function plague(){creatures=creatures.filter(()=>Math.random()>0.5)}
+function plague(){creatures=creatures.filter(()=>rand()>0.5)}
 function resetCam(){camTheta=-0.4;camPhi=0.6;camDist=700;panX=0;panY=0}
 
 function reset(){
@@ -114,7 +134,7 @@ function reset(){
 
 function draw(){
   X.fillStyle='rgba(3,10,3,0.3)';X.fillRect(0,0,W,H);
-  if(Math.random()<0.08)addFoodAt(rnd(-WORLD,WORLD),rnd(-WORLD,WORLD),3);
+  if(rand()<0.08)addFoodAt(rnd(-WORLD,WORLD),rnd(-WORLD,WORLD),3);
   creatures.forEach(c=>c.update());
   creatures=creatures.filter(c=>c.energy>0&&c.age<3000);
 
@@ -197,6 +217,17 @@ C.addEventListener('wheel',e=>{e.preventDefault();camDist*=e.deltaY>0?1.08:0.92;
 C.addEventListener('contextmenu',e=>e.preventDefault());
 
 reset();draw();
+</script>
+<script src="../crom-bridge.js"></script>
+<script>
+
+    // CROM: Comprimir genoma dos organismos
+    setInterval(() => {
+        if(!cromBridge.isReady()) return;
+        const c = document.querySelector('canvas');
+        if(c) { const ctx = c.getContext('2d'); const w=Math.min(c.width,128),h=Math.min(c.height,128); const d = ctx.getImageData(0,0,w,h); cromBridge.compress(d.data); }
+    }, 5000);
+    
 </script>
 </body>
 </html>

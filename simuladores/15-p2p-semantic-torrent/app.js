@@ -17,42 +17,68 @@ function shootPacket() {
 }
 
 sendBtn.addEventListener('click', () => {
+    if (!cromBridge.isReady()) {
+        addToLog(logA, "Aguarde a inicialização do motor WASM...");
+        return;
+    }
+    
     sendBtn.style.pointerEvents = 'none';
-    addToLog(logA, "Lendo 'filme_1080p.mp4' (1.500.000.000 Bytes)");
-    addToLog(logA, "Analisando contra Codebook Local...");
+    
+    // Gerando um payload real na memória (ex: 5MB de dados reais)
+    addToLog(logA, "Gerando payload de dados reais na memória (5 MB)...");
+    
+    const rawData = new Uint8Array(5 * 1024 * 1024);
+    // Preenchendo com padrão altamente compressível (ex: arquivo vazio com alguns diffs)
+    for(let i=0; i<rawData.length; i++) {
+        rawData[i] = i % 255;
+    }
+    
+    addToLog(logA, "Analisando com motor CROM (WASM P2P)...");
     
     setTimeout(() => {
-        addToLog(logA, "1.499.995.000 Bytes já existem no Codebook universal (99.9% match)");
-        addToLog(logA, "Gerando Delta e Hash Map...");
+        const t0 = performance.now();
+        const result = cromBridge.compress(rawData);
+        const t1 = performance.now();
         
-        setTimeout(() => {
-            let transmitSize = 51024; // ~50KB instead of 1.5GB
-            addToLog(logA, `Iniciando WebRTC DataChannel (Transmitindo: ${transmitSize} Bytes)`);
+        if (result) {
+            addToLog(logA, `Análise concluída em ${(t1 - t0).toFixed(2)}ms`);
+            addToLog(logA, `Hash Codebook Local: 0x${result.hash}`);
             
-            // Send packets
+            let transmitSize = result.cromSize; 
+            addToLog(logA, `Iniciando DataChannel (Transmitindo Custo Real: ${transmitSize} Bytes)`);
+            
+            // Send packets baseados no tamanho real
             let packets = 0;
+            // Simulamos pacotes de ~1024 bytes dependendo do cromSize
+            let maxPackets = Math.max(10, Math.ceil(transmitSize / 1024));
+            let bytesPerPacket = transmitSize / maxPackets;
+            let currentBytes = 0;
+            
             let netInterval = setInterval(() => {
                 shootPacket();
                 packets++;
-                netStat.textContent = (packets * 1024) + " Bytes";
+                currentBytes += bytesPerPacket;
+                netStat.textContent = Math.floor(currentBytes) + " Bytes";
                 
                 if(packets === 1){
-                    addToLog(logB, "Recebendo Stream CROM (WebRTC)...");
+                    addToLog(logB, "Recebendo Stream CROM...");
                 }
                 
-                if(packets >= 50) {
+                if(packets >= maxPackets) {
                     clearInterval(netInterval);
                     addToLog(logA, "Transmissão concluída!");
                     
-                    addToLog(logB, "Reconstruindo 'filme_1080p.mp4'...");
+                    addToLog(logB, "Reconstruindo Payload...");
                     setTimeout(() => {
-                        addToLog(logB, "Consulta local ao Codebook: Sucesso");
-                        addToLog(logB, "Filme Remontado O(1) na OPFS (Browser VFS)");
-                        addToLog(logB, "<b>✅ Recebimento de 1.5GB com custo de rede de apenas 50KB!</b>");
-                    }, 800);
+                        addToLog(logB, `Consulta Hash 0x${result.hash}: Sucesso`);
+                        const ratio = (result.originalSize / result.cromSize).toFixed(2);
+                        addToLog(logB, `<b>✅ Recebimento de ${(result.originalSize / 1024 / 1024).toFixed(2)} MB com custo de rede de apenas ${(result.cromSize / 1024).toFixed(2)} KB (Ratio: ${ratio}:1)</b>`);
+                    }, 500);
                 }
             }, 30);
-            
-        }, 1000);
-    }, 1500);
+        } else {
+            addToLog(logA, "Falha na compressão WASM.");
+            sendBtn.style.pointerEvents = 'auto';
+        }
+    }, 500);
 });

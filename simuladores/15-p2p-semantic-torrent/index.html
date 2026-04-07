@@ -27,7 +27,23 @@
             to { left: 100%; }
         }
         .animating { animation: shoot 1.5s linear forwards; }
-    </style>
+    
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
+</style>
 </head>
 <body>
     <header>
@@ -59,5 +75,16 @@
         </div>
     </div>
     <script src="app.js"></script>
+<script src="../crom-bridge.js"></script>
+<script>
+
+    // CROM: Comprimir chunks P2P transmitidos
+    setInterval(() => {
+        if(!cromBridge.isReady()) return;
+        const logEl = document.querySelector('.log, #log, [class*="log"]');
+        if(logEl) cromBridge.compress(logEl.innerText);
+    }, 4000);
+    
+</script>
 </body>
 </html>

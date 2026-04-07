@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CROM File Forensics — Análise Forense de Arquivos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #060810; --surface: #0e1120; --border: #1a1f35;
+            --cyan: #00d2ff; --green: #00ff88; --red: #ff3366;
+            --gold: #ffbd2e; --purple: #8b5cf6; --text: #c8d0e0; --muted: #6b7894;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; }
+        
+        .app { display:grid; grid-template-columns:300px 1fr; grid-template-rows:auto 1fr; gap:20px; padding:20px; min-height:100vh; }
+        
+        .header { grid-column:1/-1; display:flex; align-items:center; gap:15px; padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:14px; }
+        .header h1 { font-size:22px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+        .header p { color:var(--muted); font-size:13px; flex:1; }
+        
+        .drop-area {
+            border:2px dashed var(--border); border-radius:14px; background:var(--surface);
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:15px; padding:40px 20px; cursor:pointer; transition:0.3s;
+            text-align: center;
+        }
+        .drop-area:hover, .drop-area.active { border-color:var(--cyan); background:rgba(0,210,255,0.03); }
+        .drop-area h2 { font-size:16px; color:var(--cyan); }
+        .drop-area p { font-size:11px; color:var(--muted); }
+        .drop-icon { font-size:40px; }
+        
+        input[type="file"] { display:none; }
+        
+        .results { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:15px; }
+        .results h3 { font-size:14px; color:var(--cyan); text-transform:uppercase; letter-spacing:1px; }
+        
+        #fileResults { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; align-items: start; }
+        
+        .file-card { background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:10px; padding:16px; transition: transform 0.2s, border-color 0.2s; }
+        .file-card:hover { border-color: var(--cyan); transform: translateY(-3px); }
+        .file-name { font-weight:700; font-size:13px; margin-bottom:12px; display:flex; align-items:center; gap:8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-name .ext { background:var(--purple); color:#fff; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; flex-shrink: 0; }
+        
+        .metrics-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:12px; }
+        .metric-mini { background:rgba(255,255,255,0.02); padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); }
+        .metric-mini-val { font-family:'JetBrains Mono'; font-size:13px; font-weight:700; }
+        .metric-mini-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; }
+        
+        .btn-details { width: 100%; background: rgba(0,210,255,0.1); border: 1px solid rgba(0,210,255,0.3); color: var(--cyan); padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+        .btn-details:hover { background: var(--cyan); color: #000; }
+        
+        /* Modal detalhado */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; position: relative; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .modal-close { position: absolute; top: 15px; right: 15px; background: rgba(255,51,102,0.1); border: 1px solid rgba(255,51,102,0.3); color: var(--red); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .modal-close:hover { background: var(--red); color: #000; }
+        
+        .hash-display { font-family:'JetBrains Mono'; font-size:11px; color:var(--cyan); word-break:break-all; background:#000; padding:10px; border-radius:6px; margin-top: 5px; }
+        
+        .entropy-bar { display:flex; height:8px; border-radius:4px; overflow:hidden; margin:5px 0; }
+        .entropy-seg { height:100%; transition:0.3s; }
+        
+        .byte-map { display:grid; grid-template-columns:repeat(32,1fr); gap:1px; margin-top: 5px; }
+        .byte-cell { aspect-ratio:1; border-radius:1px; transition:0.2s; }
+        
+        .stat-row { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+        .stat-row .label { color:var(--muted); }
+        .stat-row .value { font-family:'JetBrains Mono'; font-weight:700; color: #fff; }
+
+        @media (max-width: 900px) {
+            .app { grid-template-columns:1fr; }
+            .drop-area { flex-direction: row; padding: 20px; }
+        }
+        @media (max-width: 600px) {
+            .app { padding:10px; gap:10px; }
+            .header h1 { font-size:18px; }
+            .drop-area { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <h1>🔬 CROM File Forensics</h1>
+            <p>Análise forense de arquivos em tempo real via WebAssembly. Cada byte passa pelo motor CROM nativo — zero simulações.</p>
+        </div>
+
+        <div class="drop-area" id="dropArea" onclick="document.getElementById('fileInput').click()">
+            <div class="drop-icon">📂</div>
+            <div>
+                <h2>Arraste Arquivos Aqui</h2>
+                <p>Ou clique para selecionar. Cada arquivo será analisado byte-a-byte pelo motor WASM.</p>
+            </div>
+            <input type="file" id="fileInput" multiple>
+        </div>
+
+        <div class="results" id="results">
+            <h3>📊 Arquivos Analisados</h3>
+            <div id="fileResults">
+                <p id="emptyMsg" style="color:var(--muted);font-size:13px;grid-column:1/-1;">Nenhum arquivo analisado ainda. Arraste arquivos para iniciar a perícia forense.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Base -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
+        <div class="modal-content" id="modalContent">
+            <!-- Injectado dinamicamente -->
+        </div>
+    </div>
+
+    <script src="../12-crom-wasm-core/wasm_exec.js"></script>
+    <script src="../crom-bridge.js"></script>
+    <script>
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileResults = document.getElementById('fileResults');
+        const emptyMsg = document.getElementById('emptyMsg');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalContent = document.getElementById('modalContent');
+
+        let uiDataStore = {}; // Store detailed data to render modal later
+        let nextId = 0;
+
+        // Drag handlers
+        dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('active'); });
+        dropArea.addEventListener('dragleave', () => dropArea.classList.remove('active'));
+        dropArea.addEventListener('drop', e => { e.preventDefault(); dropArea.classList.remove('active'); processFiles(e.dataTransfer.files); });
+        fileInput.addEventListener('change', e => { processFiles(e.target.files); e.target.value=''; });
+
+        function formatBytes(b) {
+            if(b===0) return '0 B';
+            const k=1024, s=['B','KB','MB','GB'];
+            const i=Math.floor(Math.log(b)/Math.log(k));
+            return parseFloat((b/Math.pow(k,i)).toFixed(2))+' '+s[i];
+        }
+
+        // Compute byte frequency distribution for entropy map
+        function computeByteFrequency(uint8) {
+            const freq = new Uint32Array(256);
+            for(let i=0; i<uint8.length; i++) freq[uint8[i]]++;
+            return freq;
+        }
+
+        // Shannon entropy
+        function shannonEntropy(uint8) {
+            const freq = computeByteFrequency(uint8);
+            const len = uint8.length;
+            let entropy = 0;
+            for(let i=0; i<256; i++) {
+                if(freq[i] === 0) continue;
+                const p = freq[i] / len;
+                entropy -= p * Math.log2(p);
+            }
+            return entropy; 
+        }
+
+        function generateByteMap(uint8) {
+            const size = Math.min(uint8.length, 1024);
+            let html = '<div class="byte-map">';
+            for(let i=0; i<size; i++) {
+                const v = uint8[i];
+                const hue = (v / 255) * 280;
+                const light = 20 + (v / 255) * 40;
+                html += `<div class="byte-cell" style="background:hsl(${hue},80%,${light}%)" title="Offset ${i}: 0x${v.toString(16).padStart(2,'0')} (${v})"></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function openModal(id) {
+            const data = uiDataStore[id];
+            if(!data) return;
+            
+            modalContent.innerHTML = `
+                <div class="modal-close" onclick="closeModal()">×</div>
+                <h2 style="font-size:18px; margin-bottom: 20px; color: var(--cyan); display:flex; align-items:center; gap:10px;">
+                    <span style="background:var(--purple); color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:1px;">${data.ext}</span>
+                    <span style="word-break: break-all;">${data.name}</span>
+                </h2>
+                
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom: 20px;">
+                    <div style="background:rgba(255,51,102,0.1); padding:10px; border-radius:8px; border:1px solid rgba(255,51,102,0.2);">
+                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase;">Raw Size</div>
+                        <div style="font-family:'JetBrains Mono'; font-weight:700; color:var(--red); font-size:16px;">${data.rawStr}</div>
+                    </div>
+                    <div style="background:rgba(0,255,136,0.1); padding:10px; border-radius:8px; border:1px solid rgba(0,255,136,0.2);">
+                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase;">CROM Size</div>
+                        <div style="font-family:'JetBrains Mono'; font-weight:700; color:var(--green); font-size:16px;">${data.cromStr}</div>
+                    </div>
+                    <div style="background:rgba(255,189,46,0.1); padding:10px; border-radius:8px; border:1px solid rgba(255,189,46,0.2);">
+                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase;">Ratio LSH</div>
+                        <div style="font-family:'JetBrains Mono'; font-weight:700; color:var(--gold); font-size:16px;">${data.ratio}:1</div>
+                    </div>
+                    <div style="background:rgba(139,92,246,0.1); padding:10px; border-radius:8px; border:1px solid rgba(139,92,246,0.2);">
+                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase;">Latência</div>
+                        <div style="font-family:'JetBrains Mono'; font-weight:700; color:var(--purple); font-size:16px;">${data.elapsed} ms</div>
+                    </div>
+                </div>
+
+                <h3 style="font-size:12px; color:var(--muted); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px;">ANÁLISE ESTATÍSTICA</h3>
+                <div class="stat-row"><span class="label">Entropia de Shannon</span><span class="value">${data.entropy.toFixed(4)} / 8.0 bits</span></div>
+                <div class="stat-row"><span class="label">Total de Bytes Únicos</span><span class="value">${data.uniqueBytes} / 256 possíveis</span></div>
+                <div class="stat-row"><span class="label">Byte Mais Frequente</span><span class="value">0x${data.maxByte.toString(16).padStart(2,'0')} (${data.maxCount} ocorrências = ${data.maxFreqPct}%)</span></div>
+                <div class="stat-row"><span class="label">Compressibilidade Teórica</span><span class="value">${data.compTeorica}%</span></div>
+
+                <h3 style="font-size:12px; color:var(--muted); margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px;">VISUALIZAÇÃO DE ENTROPIA</h3>
+                <div class="entropy-bar">
+                    <div class="entropy-seg" style="width:${data.entropyPct}%;background:linear-gradient(90deg,var(--green),var(--gold),var(--red));"></div>
+                    <div class="entropy-seg" style="width:${100-data.entropyPct}%;background:#1a1f35;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);"><span>Compressível (Ordenado)</span><span>Incompressível (Aleatório)</span></div>
+
+                <h3 style="font-size:12px; color:var(--muted); margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px;">SIGNATURA LSH (NATIVO WASM)</h3>
+                <div class="hash-display">0x${data.hash}</div>
+
+                <h3 style="font-size:12px; color:var(--muted); margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px;">RADIOGRAFIA DE BYTES (PRIMEIROS 1024)</h3>
+                ${data.byteMapHtml}
+            `;
+            modalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        async function processFiles(fileList) {
+            if(emptyMsg) emptyMsg.style.display = 'none';
+
+            const files = Array.from(fileList);
+            for(const file of files) {
+                const buffer = await file.arrayBuffer();
+                const uint8 = new Uint8Array(buffer);
+
+                // Wait for WASM
+                let attempts = 0;
+                while(!cromBridge.isReady() && attempts < 50) {
+                    await new Promise(r => setTimeout(r, 100));
+                    attempts++;
+                }
+
+                const t0 = performance.now();
+                const result = cromBridge.compress(uint8);
+                const elapsed = performance.now() - t0;
+
+                const entropy = shannonEntropy(uint8);
+                const entropyPct = Math.min((entropy / 8) * 100, 100);
+                const freq = computeByteFrequency(uint8);
+                const uniqueBytes = freq.filter(x => x > 0).length;
+
+                // Most common byte
+                let maxByte = 0, maxCount = 0;
+                for(let i=0; i<256; i++) { if(freq[i] > maxCount) { maxCount = freq[i]; maxByte = i; } }
+
+                const ext = file.name.split('.').pop().toUpperCase() || 'FILE';
+                const ratio = result ? (result.originalSize / Math.max(result.cromSize, 1)).toFixed(2) : '—';
+                const hash = result ? result.hash : '—';
+                const cromSize = result ? result.cromSize : file.size;
+
+                const myId = nextId++;
+                
+                // Save details to render later
+                uiDataStore[myId] = {
+                    name: file.name, ext: ext,
+                    rawStr: formatBytes(file.size), cromStr: formatBytes(cromSize),
+                    ratio: ratio, elapsed: elapsed.toFixed(2),
+                    entropy: entropy, entropyPct: entropyPct,
+                    uniqueBytes: uniqueBytes, maxByte: maxByte, maxCount: maxCount,
+                    maxFreqPct: (maxCount / Math.max(uint8.length, 1) * 100).toFixed(1),
+                    compTeorica: (100 - (cromSize/Math.max(file.size, 1)*100)).toFixed(1),
+                    hash: hash,
+                    byteMapHtml: generateByteMap(uint8)
+                };
+
+                // Create compact card
+                const card = document.createElement('div');
+                card.className = 'file-card';
+                card.innerHTML = `
+                    <div class="file-name" title="${file.name}">
+                        <span class="ext">${ext}</span> <span style="overflow:hidden; text-overflow:ellipsis;">${file.name}</span>
+                    </div>
+                    <div class="metrics-grid">
+                        <div class="metric-mini">
+                            <div class="metric-mini-val" style="color:var(--red)">${formatBytes(file.size)}</div>
+                            <div class="metric-mini-lbl">Raw</div>
+                        </div>
+                        <div class="metric-mini">
+                            <div class="metric-mini-val" style="color:var(--green)">${formatBytes(cromSize)}</div>
+                            <div class="metric-mini-lbl">CROM</div>
+                        </div>
+                        <div class="metric-mini">
+                            <div class="metric-mini-val" style="color:var(--gold)">${ratio}:1</div>
+                            <div class="metric-mini-lbl">Ratio</div>
+                        </div>
+                        <div class="metric-mini">
+                            <div class="metric-mini-val" style="color:#00d2ff">${entropy.toFixed(2)}</div>
+                            <div class="metric-mini-lbl">Entropia</div>
+                        </div>
+                    </div>
+                    <button class="btn-details" onclick="openModal(${myId})">Ver Detalhes Forenses</button>
+                `;
+                fileResults.prepend(card);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -22,6 +22,22 @@ h1{font-size:16px;color:#80f0ff;margin-bottom:8px}
 .gate:hover{background:#3030aa;transform:translateY(-2px)}
 #log{margin-top:12px;max-height:120px;overflow-y:auto;font-size:10px;color:#6666aa;border-top:1px solid #2020aa;padding-top:8px}
 #result{position:fixed;bottom:20px;left:20px;background:rgba(0,200,100,0.15);border:1px solid #40ff80;border-radius:8px;padding:12px 20px;font-size:12px;color:#40ff80;z-index:10}
+
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
 </style>
 </head>
 <body>
@@ -43,6 +59,10 @@ h1{font-size:16px;color:#80f0ff;margin-bottom:8px}
 <div id="result">Bateria 91 | Qubits: 8 | Estado: Pronto</div>
 <canvas id="c"></canvas>
 <script>
+// Fast Mulberry32 PRNG — deterministic + high-performance
+let _s32 = 42;
+function rand() { _s32 |= 0; _s32 = _s32 + 0x6D2B79F5 | 0; let t = Math.imul(_s32 ^ _s32 >>> 15, 1 | _s32); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+
 const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
 let W,H;
 function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
@@ -116,7 +136,7 @@ function applyGate(gate){
 function measure(){
   qubits.forEach(q=>{
     if(q.measured===null){
-      q.measured=Math.random()<q.prob0?0:1;
+      q.measured=rand()<q.prob0?0:1;
     }
   });
   const result=qubits.map(q=>q.measured).join('');
@@ -135,7 +155,7 @@ function addLog(msg){
 
 function spawnParticles(qi){
   for(let i=0;i<20;i++){
-    particles.push({x:W/2,y:H/2,vx:(Math.random()-0.5)*8,vy:(Math.random()-0.5)*8,life:1,color:`hsl(${qi*45},100%,70%)`});
+    particles.push({x:W/2,y:H/2,vx:(rand()-0.5)*8,vy:(rand()-0.5)*8,life:1,color:`hsl(${qi*45},100%,70%)`});
   }
 }
 
@@ -172,6 +192,29 @@ function draw(){
   requestAnimationFrame(draw);
 }
 initQubits();draw();
+</script>
+<script src="../crom-bridge.js"></script>
+<script>
+
+    // CROM: Comprimir estado quântico real a cada operação de porta
+    const _origApplyGate = window.applyGate || function(){};
+    if(typeof applyGate === 'function') {
+        const _ag = applyGate;
+        window.applyGate = function() { 
+            _ag.apply(this, arguments);
+            if(cromBridge.isReady()) {
+                const stateData = JSON.stringify({qubits: document.querySelectorAll('.qubit-state').length, gates: document.querySelectorAll('.gate').length, time: Date.now()});
+                cromBridge.compress(stateData);
+            }
+        };
+    }
+    // Compressão periódica do canvas
+    setInterval(() => {
+        if(!cromBridge.isReady()) return;
+        const c = document.querySelector('canvas');
+        if(c) { const ctx = c.getContext('2d'); const w=Math.min(c.width,128),h=Math.min(c.height,128); const d = ctx.getImageData(0,0,w,h); cromBridge.compress(d.data); }
+    }, 3000);
+    
 </script>
 </body>
 </html>

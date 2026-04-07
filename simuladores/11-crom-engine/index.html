@@ -66,6 +66,22 @@ button:disabled { opacity: 0.5; border-color: #333; cursor: not-allowed; }
 .hidden { display: none !important; }
 .pulse-text { animation: pulse 1.5s infinite; }
 @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
 </style>
 </head>
 <body>
@@ -353,7 +369,7 @@ Selecione um Payload Neural na barra lateral e ative a transferência. Os pacote
     };
 
     function appendMsg(role, content) {
-        let uniqueId = "msg-" + Math.random().toString(36).substr(2, 9);
+        let uniqueId = "msg-" + (++window._cromMsgCounter || (window._cromMsgCounter = 1));
         let bubbleStyle = role === 'ai' ? `
             <div class="message ai" id="${uniqueId}">
                 <div class="msg-meta"><span class="ai-icon">CR</span> <span style="font-weight:600">CROM System Core</span></div>
@@ -376,6 +392,17 @@ Selecione um Payload Neural na barra lateral e ative a transferência. Os pacote
             el.querySelector('.msg-bubble').innerHTML = content;
         }
     }
+</script>
+<script src="../crom-bridge.js"></script>
+<script>
+
+    // CROM: Comprimir histórico de chat
+    setInterval(() => {
+        if(!cromBridge.isReady()) return;
+        const chatEl = document.getElementById('chat');
+        if(chatEl) cromBridge.compress(chatEl.innerText);
+    }, 5000);
+    
 </script>
 </body>
 </html>

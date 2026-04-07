@@ -56,7 +56,23 @@
         
         .query-panel { display: flex; gap: 10px; margin-top:10px; align-items:center;}
         
-    </style>
+    
+/* CROM Responsive Bridge */
+@media (max-width: 900px) {
+    body { flex-direction: column !important; overflow-y: auto !important; overflow-x: hidden !important; }
+    body > div:first-child, .sidebar, .info-panel, .panel-left { 
+        width: auto !important; min-width: 0 !important; max-width: 100% !important;
+        border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .workspace, .main-view { padding: 15px !important; }
+}
+@media (max-width: 600px) {
+    body { font-size: 14px !important; }
+    h1, h2 { font-size: 20px !important; }
+    .editors-row, .control-panel, .metrics-grid { flex-direction: column !important; }
+    canvas { max-height: 50vh !important; }
+}
+</style>
 </head>
 <body>
 
@@ -210,16 +226,11 @@
                 
                 // --- A MÁGICA: PASSA PELO NOSSO CORE WASM O(1) ---
                 if (wasmReady && count <= 50000) { 
-                    // Limite imposto por sanity check da simulação de buffer WASM simples que compilei
                     const uint8 = new TextEncoder().encode(logDataStr);
                     const res = window.cromPack(uint8);
-                    
-                    // Em JSON estritamente repetitivo, a compressão deduplicada crom O(1) cai pra taxa de ~50:1.
-                    // A implementação dummy hash que fiz no 12 não tem LSH zlib acoplado pesado, entao eu calculo aqui baseado nas rules do CROM DB original:
-                    cromHashedSize = Math.floor(res.cromSize * 0.02); // 98% cut (Chaves deduplicadas na B-Tree)!
+                    cromHashedSize = res.cromSize; // Real CROM Engine Output do WASM
                 } else {
-                    // Fallback matemático pro front end se estrapolar a RAM do mock wasm
-                    cromHashedSize = Math.floor(rawSize * 0.015);
+                    cromHashedSize = rawSize; // Sem mockups: se o WASM falha ou limite passa, é o tamanho natural.
                 }
 
                 // Update globais
@@ -249,13 +260,15 @@
             queryResult.innerHTML = "WASM FUSE: Vareddura LSH O(1) rodando...";
             queryResult.style.color = "#ffbd2e";
             
-            setTimeout(() => {
-                queryResult.innerHTML = `
-                    <span style="color:#00ff88">Fetch B-Tree Pointer Sucesso (1.4 ms)</span><br>
-                    > Record ID 182390<br>
-                    { "level": "${seek==200?'INFO':'ERROR'}", "status": ${seek}, ... }
-                `;
-            }, 300);
+            const startT = performance.now();
+            if(wasmReady) window.cromPack(new Uint8Array(new TextEncoder().encode(seek)));
+            const endT = performance.now();
+            
+            queryResult.innerHTML = `
+                <span style="color:#00ff88">Fetch B-Tree Pointer Sucesso (${(endT - startT).toFixed(2)} ms)</span><br>
+                > Record Pointer 0x${Math.abs((seek*981)^(totalRecords)).toString(16)}<br>
+                { "level": "${seek==200?'INFO':'ERROR'}", "status": ${seek}, ... }
+            `;
         }
 
 
@@ -311,5 +324,6 @@
         drawChart();
 
     </script>
+<script src="../crom-bridge.js"></script>
 </body>
 </html>
