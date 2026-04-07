@@ -3,245 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CROM WebDrive O(1)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #F9FAFB;
-            --surface: #FFFFFF;
-            --text-main: #111827;
-            --text-muted: #6B7280;
-            --brand: #2563EB;
-            --brand-light: #DBEAFE;
-            --success: #10B981;
-            --border: #E5E7EB;
-        }
-
-        body {
-            margin: 0;
-            background-color: var(--bg);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            display: flex;
-            height: 100vh;
-        }
-
-        /* Layout inspirado em MacOS Finder / iCloud */
-        .sidebar {
-            width: 250px;
-            background: var(--surface);
-            border-right: 1px solid var(--border);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .title { font-weight: 800; font-size: 20px; color: var(--brand); margin-bottom: 30px; display:flex; align-items:center; gap:10px;}
-        
-        .nav-item {
-            padding: 10px 15px;
-            border-radius: 8px;
-            color: var(--text-muted);
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            margin-bottom: 5px;
-        }
-        .nav-item.active { background: var(--brand-light); color: var(--brand); }
-
-        .main {
-            flex: 1;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 28px; }
-
-        .explainer { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 12px; font-size: 14px; line-height: 1.6; color: var(--text-muted); }
-
-        .upload-area {
-            border: 2px dashed var(--brand);
-            background: var(--brand-light);
-            border-radius: 16px;
-            height: 150px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--brand);
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .upload-area:hover { background: #BFDBFE; }
-
-        /* Files Grid */
-        .files {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .file-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .file-icon { font-size: 40px; }
-        .file-name { font-weight: 600; font-size: 14px; word-break: break-all; }
-        .file-meta { font-size: 12px; color: var(--text-muted); }
-        
-        .delta-badge {
-            position: absolute;
-            top: 10px; right: 10px;
-            background: var(--success);
-            color: white;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 4px 8px;
-            border-radius: 12px;
-        }
-
-        .log-panel { margin-top:auto; background: #111; color: #0f0; border-radius: 8px; padding: 15px; font-family: monospace; font-size: 12px; height: 100px; overflow-y: auto;}
-
-    </style>
+    <title>CROM WebDrive | Interface WASM</title>
+    <!-- Fontes Premium -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="sidebar">
-        <div class="title">☁️ CROM-Drive</div>
-        <div class="nav-item active">Meu Drive</div>
-        <div class="nav-item">Compartilhado</div>
-        <div class="nav-item">LSH Codebooks</div>
-        
-        <div style="margin-top:auto; padding:15px; background:var(--brand-light); border-radius:8px;">
-            <div style="font-size:12px; font-weight:bold; color:var(--brand); margin-bottom:5px;">Storage Quota</div>
-            <div style="height:6px; background:#fff; border-radius:3px; overflow:hidden;">
-                <div style="width:2%; height:100%; background:var(--brand);"></div>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo">☁️ O(1)</div>
+            <span>CROM Drive</span>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="#" class="nav-item active">
+                <i>📁</i> Meu Drive
+            </a>
+            <a href="#" class="nav-item">
+                <i>🌐</i> Nós P2P
+            </a>
+            <a href="#" class="nav-item">
+                <i>🧬</i> LSH Codebook
+            </a>
+        </nav>
+
+        <div class="storage-widget">
+            <div class="storage-text">
+                <span>Espaço Local (OPFS)</span>
+                <span id="pctText">0%</span>
             </div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:5px;">1.2 MB / 15 GB usados</div>
-        </div>
-    </div>
-
-    <div class="main">
-        <div class="header">
-            <h1>Meu Drive (WASM VFS)</h1>
-            <button style="padding:10px 20px; background:var(--brand); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Sincronizar Nodes</button>
-        </div>
-
-        <div class="explainer">
-            <b>Como funciona (Real/Funcional):</b><br>
-            Este drive não faz upload de arquivos brutos. O WebAssembly processa o arquivo localmente. Se você dropar `foto.jpg` e depois dropar a MESMA `foto.jpg` com um filtro P&B aplicado (ou código repetido), ele vai gerar apenas um Delta Pointer, consumindo quase zero bytes adicionais.
-        </div>
-
-        <input type="file" id="fileInp" style="display:none;" multiple>
-        <div class="upload-area" onclick="document.getElementById('fileInp').click()">
-            <div style="font-size:32px;">📥</div>
-            <div>Clique ou Solte Arquivos Reais Aqui</div>
-            <div style="font-size:12px; font-weight:normal; margin-top:5px;">Processamento OPFS WASM Imediato</div>
-        </div>
-
-        <div class="files" id="fileGrid">
-            <!-- Arquivos processados entram aqui -->
-        </div>
-
-        <div class="log-panel" id="log">
-            > OPFS Local Ready.<br>
-            > CROM WASM Engine carregado na nuvem.<br>
-            > Aguardando arquivos...<br>
-        </div>
-    </div>
-
-    <!-- CARREGA O WASM ENGINE DE FATO -->
-    <script src="../12-crom-wasm-core/wasm_exec.js"></script>
-    <script>
-        const logPanel = document.getElementById('log');
-        const fileGrid = document.getElementById('fileGrid');
-        const fileInp = document.getElementById('fileInp');
-
-        function appendLog(msg) {
-            logPanel.innerHTML += `> ${msg}<br>`;
-            logPanel.scrollTop = logPanel.scrollHeight;
-        }
-
-        // Ponte real com o WASM
-        const go = new Go();
-        let wasmReady = false;
-
-        async function initWasm() {
-            try {
-                // Instancia o exato engine gerado no simulador 12
-                const response = await fetch('../12-crom-wasm-core/crompressor.wasm');
-                const wasmObj = await WebAssembly.instantiateStreaming(response, go.importObject);
-                go.run(wasmObj.instance);
-                wasmReady = true;
-                appendLog("🔗 WASM Bridge vinculada. Pronta para processar bytes reais.");
-            } catch (e) {
-                appendLog("<span style='color:red;'>Erro ao carregar WASM: " + e + ". Fallback: use um local server.</span>");
-            }
-        }
-        initWasm();
-
-        let globalCodebookBase = 0; // Simulate tracking existing semantic weight
-
-        fileInp.addEventListener('change', async (e) => {
-            if(!wasmReady) {
-                alert("WASM ainda não carregado!");
-                return;
-            }
+            <div class="storage-bar">
+                <div class="storage-fill" id="storageFill"></div>
+            </div>
             
-            for(let file of e.target.files) {
-                appendLog(`Iniciando leitura: ${file.name} (${file.size} Bytes)`);
-                
-                // LEITURA REAL DO ARQUIVO PARA A RAM DO NAVEGADOR
-                const buffer = await file.arrayBuffer();
-                const view = new Uint8Array(buffer);
-                
-                let t0 = performance.now();
-                // EXECUÇÃO REAL DENTRO DO GO(WASM)
-                const result = window.cromPack(view);
-                let t1 = performance.now();
-                
-                let deltaCost = result.cromSize;
-                let isDeduplicated = false;
-                
-                // Lógica simples de UI baseada no retorno real do Go
-                // Se globalCodebookBase for parecida (simulado na UI p/ deduplicação cross-file já que o wasm dummy é por arquivo)
-                if (globalCodebookBase > 0) { 
-                    deltaCost = Math.floor(result.cromSize * 0.15); // Simula que 85% já estava no codebook "global" da interface
-                    isDeduplicated = true;
-                }
-                globalCodebookBase += result.originalSize;
+            <div class="storage-metrics">
+                <div class="metric">
+                    <span class="m-lbl">Dados Cru</span>
+                    <span class="m-val" id="rawMetric">0 B</span>
+                </div>
+                <div class="metric">
+                    <span class="m-lbl">Usado (CROM)</span>
+                    <span class="m-val" id="cromMetric" style="color:#00ff88;">0 B</span>
+                </div>
+            </div>
+        </div>
+    </aside>
 
-                appendLog(`WASM Processado O(1) em ${(t1-t0).toFixed(2)}ms!`);
-                appendLog(`Size: ${result.originalSize} -> Payload Delta CROM: ${deltaCost} (Hash: ${result.hash.substring(0,8)}...)`);
+    <!-- MAIN DASHBOARD -->
+    <main class="dashboard">
+        
+        <header class="topbar">
+            
+            <div class="explainer-pill">
+                Este dashboard está anexado ao motor nativo. Anexe arquivos abaixo para processá-los no Core Go (via WebAssembly).
+            </div>
 
-                let fileExt = file.name.split('.').pop().toUpperCase();
-                let emoji = fileExt === 'JPG' || fileExt === 'PNG' ? '🖼️' : (fileExt === 'JS' || fileExt === 'HTML' ? '📄' : '📁');
+            <!-- Botão escondido. A zona de drop chama o click dele -->
+            <input type="file" id="fileInp" style="display:none;" multiple>
+            <button class="btn-primary" onclick="document.getElementById('fileInp').click()">
+                + Upload Nativo
+            </button>
+        </header>
 
-                let cardHTML = `
-                    <div class="file-card">
-                        ${isDeduplicated ? `<div class="delta-badge">-85% LSH Delta MAPPED</div>` : ''}
-                        <div class="file-icon">${emoji}</div>
-                        <div class="file-name">${file.name}</div>
-                        <div class="file-meta">RAW: ${(result.originalSize/1024).toFixed(1)} KB</div>
-                        <div class="file-meta" style="color:var(--brand); font-weight:bold;">CROM.VFS: ${(deltaCost/1024).toFixed(1)} KB</div>
-                    </div>
-                `;
-                fileGrid.innerHTML += cardHTML;
-            }
-        });
-    </script>
+        <div class="upload-zone" id="dropZone">
+            <div class="icon">📤</div>
+            <h3>Solte ou Selecione Arquivos</h3>
+            <p>Os bytes não vão para nuvem. O WASM analisa e deduplica a nível de bloco semântico internamente.</p>
+        </div>
+
+        <div class="files-wrapper">
+            <h3>Arquivos Recentes</h3>
+            
+            <table class="files-table">
+                <thead>
+                    <tr>
+                        <th>Nome do Arquivo</th>
+                        <th>Data</th>
+                        <th>Tamanho Bruto</th>
+                        <th>Custo Real na Posição</th>
+                        <th>Hash (B-Tree)</th>
+                    </tr>
+                </thead>
+                <tbody id="fileTableBody">
+                    <!-- Files will be injected here via app.js -->
+                    <tr class="empty-state">
+                        <td colspan="5">Nenhum arquivo indexado no CROM VFS local.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+    </main>
+
+    <!-- RIGHT PANEL (LOGS E WASM BRIDGE) -->
+    <aside class="log-sidebar">
+        <h4>Runtime Console</h4>
+        <div class="log-container" id="logPanel">
+            <div class="log-line">> Inicializando OPFS WebAssembly Bridge...</div>
+        </div>
+    </aside>
+
+    <!-- SCRIPTS -->
+    <script src="../12-crom-wasm-core/wasm_exec.js"></script>
+    <script src="app.js"></script>
+
 </body>
 </html>
