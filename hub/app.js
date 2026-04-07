@@ -6,6 +6,42 @@
 // --- Data ---
 const simulators = [
   {
+    num: "15",
+    title: "P2P Semantic Torrent",
+    desc: "Transmissão Peer-to-Peer (WebRTC) onde apenas deltas semânticos trafegam. Economiza 99% da banda mapeando os IDs do Codebook local.",
+    icon: "🌐",
+    tags: ["web", "p2p", "sim"],
+    href: "../simuladores/15-p2p-semantic-torrent/index.html",
+    accent: "#fe5f55"
+  },
+  {
+    num: "14",
+    title: "Parametric Image Cloner",
+    desc: "Edite imagens manipulando os metadados (IDs do Codebook) em vez de recalcular pixels. Gera imagens derivativas a custo zero.",
+    icon: "🖼️",
+    tags: ["web", "ui", "sim"],
+    href: "../simuladores/14-parametric-cloner/index.html",
+    accent: "#ff00ff"
+  },
+  {
+    num: "13",
+    title: "OPFS Deduplicador In-Browser",
+    desc: "Arraste múltiplos arquivos pesados. O WASM agrupa semanticamente os chunks (LSH) gerando B-Trees O(1) de deduplicação.",
+    icon: "📂",
+    tags: ["web", "wasm", "sim"],
+    href: "../simuladores/13-wasm-deduplicator/index.html",
+    accent: "#66fcf1"
+  },
+  {
+    num: "12",
+    title: "CROM WASM Core Sandbox",
+    desc: "Motor real do Crompressor compilado para WebAssembly rodando nativamente no navegador.",
+    icon: "🚀",
+    tags: ["web", "wasm"],
+    href: "../simuladores/12-crom-wasm-core/index.html",
+    accent: "#ffdd44"
+  },
+  {
     num: '01',
     title: 'Quantum Circuit Simulator',
     desc: 'Simulador de circuitos quânticos com 8 qubits, portas Hadamard, CNOT, X, Z, T e visualização da esfera de Bloch em tempo real.',

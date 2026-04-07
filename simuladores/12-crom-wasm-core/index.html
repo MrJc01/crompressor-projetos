@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CROM WebAssembly Core Sandbox</title>
+    <script src="wasm_exec.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1a;
+            color: #d0d0ff;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid #4466ff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(68, 102, 255, 0.2);
+        }
+        h1 { color: #00ff88; margin-top: 0; }
+        .editor, .terminal {
+            width: 100%;
+            height: 150px;
+            background: #05050a;
+            color: #ff8800;
+            border: 1px solid #333366;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: inherit;
+            margin-bottom: 20px;
+            resize: vertical;
+        }
+        .terminal { color: #00d4ff; font-size: 13px; outline: none; }
+        button {
+            background: linear-gradient(90deg, #4466ff, #8844ff);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            font-family: inherit;
+        }
+        button:hover { opacity: 0.8; }
+        #status { margin-bottom: 10px; font-weight: bold; color: #ff44aa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧬 CROM WASM Core Sandbox</h1>
+        <div id="status">Status: Carregando WebAssembly...</div>
+        
+        <p>Digite texto ou JSON abaixo para comprimir no navegador via CROM-WASM:</p>
+        <textarea id="input" class="editor">{"user": "crom_ia", "dna_token": "⌬-8812"}</textarea>
+        
+        <button id="packBtn" disabled>Crompress Pack O(1)</button>
+        
+        <p style="margin-top:20px;">Output (Hex & Metrics):</p>
+        <textarea id="output" class="terminal" readonly></textarea>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

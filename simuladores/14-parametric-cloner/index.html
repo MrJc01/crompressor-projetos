@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CROM Parametric Image Cloner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body { margin:0; background:#000; color:#fff; font-family:'Outfit', sans-serif; height:100vh; display:flex; overflow:hidden;}
+        #editor { flex:1; display:flex; flex-direction:column; padding:30px; border-right:1px solid #333;}
+        h1 { color: #f0f; margin-top:0; font-size: 28px; letter-spacing:1px;}
+        p { color: #aaa; font-size: 14px;}
+        .tools { margin-top:20px; display:flex; flex-direction:column; gap:15px; }
+        .slider-group { background:#111; padding:15px; border-radius:8px; border:1px solid #222; }
+        .slider-group label { display:flex; justify-content:space-between; font-family:'JetBrains Mono'; font-size:11px; margin-bottom:8px; color:#f0f;}
+        input[type=range] { width:100%; accent-color:#f0f; }
+        
+        #viewer { flex:2; background:#0a0a0a; display:flex; align-items:center; justify-content:center; position:relative; }
+        canvas { max-width: 90%; max-height: 90%; box-shadow: 0 0 40px rgba(255,0,255,0.1); }
+        .overlay-stats { position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); padding:15px; border:1px solid #333; font-family:'JetBrains Mono'; font-size:12px; color:#0f0;}
+        
+        button { margin-top:20px; padding:12px; background:#f0f; color:#000; border:none; font-weight:bold; font-family:inherit; font-size:16px; border-radius:4px; cursor:pointer;}
+        button:hover { background:#d0d;}
+    </style>
+</head>
+<body>
+    <div id="editor">
+        <h1>Clones Paramétricos</h1>
+        <p>Edite imagens sem tocar nos pixels originais. Os sliders abaixo mudam apenas as IDs de referência no Codebook do Crompressor.</p>
+        
+        <div class="tools">
+            <div class="slider-group">
+                <label>Chunk ID Offset (Glitches)<span id="valG">0</span></label>
+                <input type="range" id="offsetSlider" min="-500" max="500" value="0">
+            </div>
+            <div class="slider-group">
+                <label>Codebook Palette Map<span id="valP">0</span></label>
+                <input type="range" id="paletteSlider" min="0" max="360" value="0">
+            </div>
+            <div class="slider-group" style="opacity:0.5">
+                <label>Delta Reconstruction Bias<span>Fixed</span></label>
+                <input type="range" disabled value="50">
+            </div>
+        </div>
+        
+        <button id="renderBtn">🔄 Gerar Novo .crom (Paramétrico)</button>
+    </div>
+    
+    <div id="viewer">
+        <canvas id="c"></canvas>
+        <div class="overlay-stats">
+            <div>Codebook Size: 45KB</div>
+            <div>Image .crom: 2KB</div>
+            <div style="color:#f0f">Pixels Alterados: 0</div>
+            <div>Chunks Alterados: <span id="chunkCount">0</span></div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
