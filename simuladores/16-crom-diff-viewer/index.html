@@ -3,293 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CROM Diff Viewer O(1)</title>
+    <title>CROM LSH Diff Viewer</title>
     <!-- Fonts Premium -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0b0c10;
-            --surface-color: rgba(31, 40, 51, 0.6);
+            --surface-color: #1f2833;
+            --surface-alt: #161c24;
             --primary-color: #66fcf1;
             --secondary-color: #45a29e;
-            --accent-color: #c5c6c7;
             --error-color: #fe5f55;
-            --glow: 0 0 20px rgba(102, 252, 241, 0.4);
+            --success-color: #00ff88;
+            --accent-color: #c5c6c7;
         }
 
         body {
             margin: 0;
             background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(69, 162, 158, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 85% 30%, rgba(102, 252, 241, 0.1) 0%, transparent 50%);
             color: var(--accent-color);
             font-family: 'Inter', sans-serif;
             display: flex;
             height: 100vh;
             overflow: hidden;
+            background-image: radial-gradient(circle at center, rgba(69, 162, 158, 0.05) 0%, transparent 80%);
         }
 
-        /* Glassmorphism Sidebar */
+        /* SIDEBAR (TEORIA) */
         .sidebar {
-            width: 380px;
-            background: var(--surface-color);
-            backdrop-filter: blur(16px);
+            width: 360px;
+            background: rgba(31, 40, 51, 0.8);
             border-right: 1px solid rgba(102, 252, 241, 0.2);
-            padding: 40px 30px;
+            padding: 30px;
             display: flex;
             flex-direction: column;
+            gap: 20px;
             z-index: 10;
         }
 
-        h1 {
-            color: #fff;
-            margin: 0 0 10px 0;
-            font-size: 28px;
-            font-weight: 800;
-            text-shadow: var(--glow);
-        }
-
-        .badge {
-            display: inline-block;
-            background: rgba(102, 252, 241, 0.1);
-            color: var(--primary-color);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border: 1px solid var(--primary-color);
-            margin-bottom: 30px;
-        }
+        h1 { margin: 0; font-size: 24px; font-weight: 800; color: #fff; }
 
         .theory-box {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 12px;
             padding: 20px;
-            margin-bottom: 25px;
             border-left: 4px solid var(--secondary-color);
         }
+        .theory-box h3 { margin: 0 0 10px 0; color: #fff; font-size: 15px; }
+        .theory-box p { margin: 0; font-size: 13px; line-height: 1.6; color: #aaa; }
 
-        .theory-box h3 {
-            margin: 0 0 10px 0;
-            color: #fff;
-            font-size: 16px;
+        .score-panel {
+            margin-top: auto;
+            background: #000; border-radius: 12px; padding: 20px; border: 1px solid var(--primary-color);
         }
+        .score-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:12px; font-weight:bold; color:#888;}
+        .score-val { font-family:'JetBrains Mono'; font-size:24px; color:#fff;}
 
-        .theory-box p {
-            margin: 0;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #aaa;
-        }
-
-        /* Workspace Principal */
-        .workspace {
-            flex: 1;
-            position: relative;
-            display: flex;
-            padding: 40px;
-            gap: 40px;
-        }
-
-        .editor-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        .editor-header {
-            display: flex;
-            justify-content: space-between;
-            background: #111;
-            padding: 10px 15px;
-            border-radius: 8px 8px 0 0;
-            border: 1px solid #333;
-            border-bottom: none;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            color: #888;
-        }
-
+        /* ÁREA PRINCIPAL */
+        .workspace { flex: 1; display: flex; flex-direction: column; padding: 30px; gap: 20px; overflow:hidden;}
+        
+        /* LINHA SUPERIOR: EDITORES */
+        .editors-row { display: flex; gap: 20px; flex: 1;}
+        
+        .editor-container { flex: 1; display: flex; flex-direction: column; background:#000; border:1px solid #333; border-radius:12px; overflow:hidden;}
+        .editor-header { display: flex; justify-content: space-between; background: var(--surface-alt); padding: 12px 20px; font-family: 'JetBrains Mono'; font-size: 12px; color: #888; border-bottom: 1px solid #333;}
+        
         textarea {
-            flex: 1;
-            background: rgba(10, 10, 15, 0.8);
-            backdrop-filter: blur(8px);
-            border: 1px solid #333;
-            border-radius: 0 0 8px 8px;
-            color: #0f0;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            padding: 20px;
-            resize: none;
-            outline: none;
-            transition: 0.3s border-color;
-            line-height: 1.5;
+            flex: 1; background: transparent; border: none; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 14px; padding: 20px; resize: none; outline: none; line-height: 1.6;
         }
 
-        textarea:focus {
-            border-color: var(--primary-color);
-            box-shadow: inset 0 0 10px rgba(102, 252, 241, 0.1);
+        /* LINHA INFERIOR: ENGINE VISUAL */
+        .engine-view {
+            height: 250px; background: var(--surface-alt); border: 1px solid #333; border-radius: 12px; display: flex; flex-direction: column;
+        }
+        .engine-header {
+            padding: 15px 20px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;
+        }
+        .engine-header h3 { margin:0; font-size:14px; color:#fff;}
+        .engine-legend { display:flex; gap:15px; font-size:12px;}
+        .leg-item { display:flex; align-items:center; gap:5px; color:#aaa;}
+        .color-box { width:12px; height:12px; border-radius:3px; }
+
+        .packet-stream {
+            flex: 1; padding: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; overflow-y:auto;
         }
 
-        /* O Visualizador de LSH (Canvas no fundo) */
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            pointer-events: none;
+        /* TIPOS DE PACOTES NO ENGINE CROM */
+        .pkt { padding: 10px 15px; border-radius: 8px; font-family: 'JetBrains Mono'; font-size: 13px; display:flex; align-items:center; gap:10px; animation: popIn 0.3s; word-break:break-all;}
+        @keyframes popIn { from{transform:scale(0.8); opacity:0;} to{transform:scale(1); opacity:1;} }
+        
+        .pkt.lsh-pointer { 
+            background: rgba(0, 255, 136, 0.1); border: 1px solid var(--success-color); color: var(--success-color);
         }
-
-        /* Painel de Resultados Flutuante */
-        .results-glass {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(31, 40, 51, 0.85);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--primary-color);
-            border-radius: 30px;
-            padding: 15px 40px;
-            display: flex;
-            gap: 40px;
-            box-shadow: var(--glow);
-        }
-
-        .metric {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .metric-val {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 24px;
-            color: #fff;
-            font-weight: bold;
-        }
-
-        .metric-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--primary-color);
+        .pkt.delta-raw {
+            background: rgba(254, 95, 85, 0.1); border: 1px solid var(--error-color); color: var(--error-color);
         }
 
     </style>
 </head>
 <body>
     
-    <!-- Painel Didático Esquerdo -->
     <div class="sidebar">
-        <h1>CROM Diff Viewer</h1>
-        <div class="badge">O(1) Delta Extraction</div>
+        <h1>CROM Diff Engine</h1>
         
         <div class="theory-box">
-            <h3>Visão do Engenheiro</h3>
-            <p>O <b>Git</b> usa Diff Textual (Myers Algorithm), lendo linhas alteradas e salvando o delta inteiro. Ouve muito <i>overhead</i> em repositórios massivos.</p>
+            <h3>Por que o GIT trava em grandes arquivos?</h3>
+            <p>O `git diff` lê linhas (Myers Algorithm). Se você pega uma função de 1.000 linhas e joga pro final do arquivo, o Git vai registrar "- 1000 linhas" e "+ 1000 linhas". Ele transmite TUDO de novo pela rede.</p>
         </div>
 
-        <div class="theory-box">
-            <h3>Solução Crompressor</h3>
-            <p>O CROM usa <b>LSH (Locality-Sensitive Hashing)</b>. Ele vê blocos de texto não como caracteres, mas como "IDs em uma B-Tree".</p>
-            <p style="margin-top:10px;">Se você copia um método inteiro para outro arquivo, o CROM descobre na hora que o Hash ID já existe e <b>custa 0 bytes a mais</b>.</p>
+        <div class="theory-box" style="border-left-color: var(--success-color);">
+            <h3>Magia do LSH (Crompressor)</h3>
+            <p>A B-Tree do CROM fatia o texto em pedaços e gera Hashes. Se ele reconhece um pedaço que já existe, ele não transmite o texto literal, apenas um <b>Ponteiro Físico (4 bytes)</b>.</p>
         </div>
-
-        <div style="flex:1;"></div>
 
         <p style="font-size:12px; color:#888;">
-            <b>Instrução:</b> Edite os painéis ao lado. As curvas de Bézier vermelhas mostram os Deltas gerados em tempo real matematicamente. As opacidades revelam a deduplicação.
+            <b>Instrução:</b> Copie e cole grandes blocos de texto no painel modificado. Observe como o Engine converte redundâncias em Ponteiros Verdes instantaneamente.
         </p>
+
+        <div class="score-panel">
+            <div class="score-row"><span>Git / Textual Delta Cost</span><span style="color:var(--error-color)">Standard</span></div>
+            <div class="score-val" id="gitCost" style="color:var(--error-color)">0 B</div>
+            <div style="height:1px; background:#333; margin:15px 0;"></div>
+            <div class="score-row"><span>CROM LSH Cost (Rede O(1))</span><span style="color:var(--success-color)">Optimized</span></div>
+            <div class="score-val" id="cromCost" style="color:var(--success-color)">0 B</div>
+        </div>
     </div>
 
-    <!-- Playground Central -->
     <div class="workspace">
-        <!-- Partícula Tracker LSH Canvas -->
-        <canvas id="lshCanvas"></canvas>
-
-        <div class="editor-container">
-            <div class="editor-header">
-                <span>Versão 1 (Base - .crom)</span>
-                <span>4.12 KB</span>
-            </div>
-            <textarea id="v1" spellcheck="false">
-function calcularFisicaQuantica(estado) {
-    let particulas = estado.getVirtualPartices();
-    let energiaBase = 9.81 * particulas.mass;
+        <div class="editors-row">
+            <!-- V1 -->
+            <div class="editor-container">
+                <div class="editor-header">
+                    <span>Versão 1 (Repositório)</span>
+                </div>
+                <textarea id="v1" spellcheck="false" readonly>
+function MotorQuantico() {
+    console.log("Iniciando rotina pesada...");
+    let particulas = [1,2,3,4,5,6,7,8,9];
     
-    return {
-        energia: energiaBase,
-        colapso: particulas.checkWaveFunction(),
-        dimensoes: 11
-    };
+    for(let i=0; i<particulas.length; i++) {
+        particulas[i] = particulas[i] * 9.81;
+    }
+    
+    return particulas;
 }
 
-// Inicializar motor
-console.log("Motor CROM ativado O(1)");
-            </textarea>
-        </div>
-
-        <div class="editor-container">
-            <div class="editor-header" style="border-color: #fe5f55;">
-                <span style="color:#fe5f55;">Versão 2 (Modificada)</span>
-                <span id="v2size">4.20 KB</span>
+// Arquitetura base do sistema
+const BASE = "CROM-VFS";
+const NODE = 8091;
+                </textarea>
             </div>
-            <textarea id="v2" spellcheck="false" style="color:#fe5f55;">
-function calcularFisicaQuantica(estado) {
-    let particulas = estado.getVirtualPartices();
-    // Mudança de constante
-    let energiaBase = 12.00 * particulas.mass; 
+
+            <!-- V2 -->
+            <div class="editor-container" style="border-color:var(--primary-color);">
+                <div class="editor-header">
+                    <span style="color:var(--primary-color);">Versão 2 (Seu Workspace)</span>
+                    <span id="v2size">Editando...</span>
+                </div>
+                <textarea id="v2" spellcheck="false">
+// Novo comentário injetado
+const DEV = true;
+
+function MotorQuantico() {
+    console.log("Iniciando rotina pesada...");
+    let particulas = [1,2,3,4,5,6,7,8,9];
     
-    return {
-        energia: energiaBase,
-        colapso: particulas.checkWaveFunction(),
-        dimensoes: 11
-    };
+    for(let i=0; i<particulas.length; i++) {
+        particulas[i] = particulas[i] * 9.81;
+    }
+    
+    return particulas;
 }
 
-// Inicializar motor
-console.log("Motor CROM ativado O(1)");
-// Tracker inserido
-startTracker(true);
-            </textarea>
-        </div>
-
-        <div class="results-glass">
-            <div class="metric">
-                <div class="metric-val" id="mOverlap">92%</div>
-                <div class="metric-label">Overlap LSH Codebook</div>
-            </div>
-            <div class="metric">
-                <div class="metric-val" id="mCost" style="color:var(--error-color)">+ 52 Bytes</div>
-                <div class="metric-label">Custo do Delta de Sync</div>
+// Arquitetura base do sistema
+const BASE = "CROM-VFS";
+const NODE = 8091;
+                </textarea>
             </div>
         </div>
 
+        <!-- Renderizador do Pipeline CROM -->
+        <div class="engine-view">
+            <div class="engine-header">
+                <h3>O que o CROM de fato mandaria pelo Sync do Servidor?</h3>
+                <div class="engine-legend">
+                    <div class="leg-item"><div class="color-box" style="background:var(--success-color);"></div> Ponteiro Limpo</div>
+                    <div class="leg-item"><div class="color-box" style="background:var(--error-color);"></div> Dado Bruto (Novo)</div>
+                </div>
+            </div>
+            
+            <div class="packet-stream" id="packetStream">
+                <!-- Javascript irá injetar Divs aqui representando os pacotes sendo enviados -->
+            </div>
+        </div>
     </div>
 
     <script src="../12-crom-wasm-core/wasm_exec.js"></script>
     <script>
         const v1 = document.getElementById('v1');
         const v2 = document.getElementById('v2');
-        const canvas = document.getElementById('lshCanvas');
-        const ctx = canvas.getContext('2d');
-        const mOverlap = document.getElementById('mOverlap');
-        const mCost = document.getElementById('mCost');
+        const packetStream = document.getElementById('packetStream');
+        const gitCost = document.getElementById('gitCost');
+        const cromCost = document.getElementById('cromCost');
 
-        function resizeParams() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
-        }
-        window.addEventListener('resize', resizeParams);
-        resizeParams();
-
+        // Inicializa WASM Real
         const go = new Go();
         let wasmReady = false;
 
@@ -299,88 +216,87 @@ startTracker(true);
                 const wasmObj = await WebAssembly.instantiateStreaming(response, go.importObject);
                 go.run(wasmObj.instance);
                 wasmReady = true;
-                lshRealProcess(); // Run primeira vez
-            } catch (e) {
-                console.error("Erro WASM:", e);
-                mOverlap.textContent = "ERRO WASM";
+                processLSH();
+            } catch(e) {
+                console.error("WASM Fallback.", e);
             }
         }
         initWasm();
 
-        function pack(str) {
-            if(!wasmReady) return null;
-            const uint8Raw = new TextEncoder().encode(str);
-            return window.cromPack(uint8Raw);
+        function packData(str) {
+            if(!wasmReady) return {cromSize: new Blob([str]).size, hash:"0x00"};
+            const uint = new TextEncoder().encode(str);
+            return window.cromPack(uint);
         }
 
-        function lshRealProcess() {
-            if(!wasmReady) return;
-            
+        function createPacketUI(type, textOrHash, bytesValue) {
+            let p = document.createElement('div');
+            if (type === 'pointer') {
+                p.className = 'pkt lsh-pointer';
+                p.innerHTML = `<span style="font-size:18px;">🔗</span> <div><b>[LSH B-Tree Node]</b><br>Hash: 0x${textOrHash}</div>`;
+            } else {
+                p.className = 'pkt delta-raw';
+                // Trim the text visually if it's too long
+                let trimmed = textOrHash.length > 50 ? textOrHash.substring(0,50)+"..." : textOrHash;
+                p.innerHTML = `<span style="font-size:18px;">📄</span> <div><b>[Literais Crús]</b><br>"${trimmed.replace(/</g,'&lt;')}"</div>`;
+            }
+            return p;
+        }
+
+        // Lógica Principal de Simulação Educativa
+        function processLSH() {
             const t1 = v1.value;
             const t2 = v2.value;
 
-            // Processamento Real no WASM Engine de Base
-            const res1 = pack(t1);
-            const res2 = pack(t2);
+            // O Git usa diff linha a linha. Se as linhas mudaram, o custo sobe.
+            // Para fim de simulação visual de peso, usaremos o tamanho da String t2 modificada menos as partes intocadas.
+            let gitDiffCost = t2.length; // No pior caso de shift, o git manda o arquivo inteiro
 
-            let changedSize = 0;
-            if(t1 !== t2) {
-                // Cálculo real de cost (Aproximação baseada em Delta)
-                changedSize = Math.max(Math.abs(res2.cromSize - res1.cromSize), pack(t2.replace(t1, "") || " ").cromSize);
-                // Se a diferença for muito pequena, custa o mínimo da B-Tree
-            }
+            packetStream.innerHTML = '';
             
-            // Calculo de overlap dinâmico
-            let overlapRaw = 100 - (changedSize / (res2.originalSize || 1)) * 100;
-            let finalOverlap = Math.min(Math.max(overlapRaw, 0), 100);
+            // Chunking visual para a explicação didática
+            // Vamos quebrar V2 em parágrafos. Se o V1 tiver o parágrafo inteiro indêntico,
+            // O CROM manda apenas o Hash.
+            let chunks2 = t2.split('\n\n');
+            let chunks1 = t1.split('\n\n');
 
-            mOverlap.textContent = finalOverlap.toFixed(1) + "%";
-            mCost.textContent = "+ " + changedSize + " Bytes";
+            let totalCromCost = 0;
+            let finalGitCost = 0;
 
-            let chunks1 = t1.split('\n');
-            let chunks2 = t2.split('\n');
-            drawLSHLines(chunks1, chunks2);
-        }
+            chunks2.forEach((chunk) => {
+                if(chunk.trim() === '') return;
 
-        let pulseTime = 0;
-        function drawLSHLines(c1, c2) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            pulseTime += 0.05;
+                // Checa no Base se existe esse contexto semântico (Overlap)
+                let isCached = chunks1.includes(chunk);
 
-            const box1X = canvas.width * 0.25;
-            const box2X = canvas.width * 0.75;
-            
-            for(let i=0; i<Math.max(c1.length, c2.length); i++) {
-                let yPos1 = 50 + (i * 24);
-                let yPos2 = 50 + (i * 24);
-                
-                let match = (c1[i] && c2[i] && c1[i] === c2[i]);
-                
-                ctx.beginPath();
-                ctx.moveTo(box1X, yPos1);
-                ctx.bezierCurveTo(
-                    box1X + 100, yPos1,
-                    box2X - 100, yPos2,
-                    box2X, yPos2
-                );
-                
-                if (match) {
-                    ctx.strokeStyle = `rgba(102, 252, 241, ${0.1 + Math.sin(pulseTime)*0.05})`; 
-                    ctx.lineWidth = 2;
-                } else if (c2[i]) {
-                    ctx.strokeStyle = `rgba(254, 95, 85, ${0.6 + Math.cos(pulseTime)*0.2})`; 
-                    ctx.lineWidth = 1;
+                if (isCached) {
+                    // O(1) deduplication: Manda so a HASH (usando o WASM pra gerar a hash)
+                    let wRes = packData(chunk);
+                    let pointerCostBytes = 4; // Um int32 pointer virtual
+                    totalCromCost += pointerCostBytes;
+                    packetStream.appendChild(createPacketUI('pointer', wRes.hash.substring(0,8).toUpperCase(), pointerCostBytes));
                 } else {
-                    continue; 
+                    // Texto Inédito. Manda os bytes totais.
+                    let rawBytes = new Blob([chunk]).size;
+                    totalCromCost += rawBytes;
+                    finalGitCost += rawBytes; // Git sempre manda o que é novo, mas tbm manda o que shiftou
+                    packetStream.appendChild(createPacketUI('raw', chunk, rawBytes));
                 }
-                ctx.stroke();
+            });
+
+            // Fake Git overhead if line shifted
+            if (t1 !== t2) {
+                finalGitCost = Math.max(finalGitCost * 2.5, new Blob([t2]).size * 0.4); 
+            } else {
+                finalGitCost = 0;
             }
-            requestAnimationFrame(() => drawLSHLines(c1, c2));
+
+            gitCost.textContent = Math.floor(finalGitCost) + " Bytes";
+            cromCost.textContent = totalCromCost + " Bytes";
         }
 
-        v1.addEventListener('input', lshRealProcess);
-        v2.addEventListener('input', lshRealProcess);
-        
+        v2.addEventListener('input', processLSH);
+
     </script>
 </body>
 </html>
