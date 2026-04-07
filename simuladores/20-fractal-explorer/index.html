@@ -3,143 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CROM Fractal Explorer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600&display=swap" rel="stylesheet">
+    <title>CROM Fractal Explorer | WebGL B-Tree</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    
+    <!-- Three.js e OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Outfit', sans-serif; color: white;}
         #canvas-container { position: absolute; top:0; left:0; width:100vw; height:100vh;}
         
         .ui-glass {
             position: absolute;
-            top: 30px;
-            left: 30px;
-            background: rgba(10, 10, 10, 0.4);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
+            top: 40px;
+            left: 40px;
+            background: rgba(10, 10, 15, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            border-radius: 16px;
             padding: 30px;
-            width: 300px;
+            width: 350px;
             pointer-events: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 10;
         }
 
-        h2 { margin: 0 0 10px 0; background: -webkit-linear-gradient(45deg, #ff007f, #00d2ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600;}
-        p { font-size: 14px; color: #ccc; line-height: 1.5;}
+        h2 { margin: 0 0 10px 0; background: -webkit-linear-gradient(45deg, #ff007f, #00d2ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; font-size: 28px;}
+        p { font-size: 14px; color: #ccc; line-height: 1.6; margin-bottom: 20px;}
+        
+        .controls-hint {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #00d2ff;
+            border-left: 3px solid #ff007f;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
 
         .node-info {
             position: absolute;
-            bottom: 30px;
-            right: 30px;
-            background: rgba(0,0,0,0.8);
+            bottom: 40px;
+            right: 40px;
+            background: rgba(5, 5, 10, 0.9);
+            backdrop-filter: blur(10px);
             border: 1px solid #ff007f;
-            padding: 20px;
-            border-radius: 8px;
-            transform: translateX(120%);
-            transition: 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
+            padding: 25px;
+            border-radius: 12px;
+            transform: translateY(150%);
+            transition: 0.4s cubic-bezier(0.1, 0.7, 0.1, 1);
+            pointer-events: none;
+            width: 250px;
+            box-shadow: 0 0 30px rgba(255, 0, 127, 0.2);
+            z-index: 10;
         }
 
-        .node-info.visible { transform: translateX(0); }
-        .hash-id { font-family: monospace; color: #00d2ff; font-size: 16px;}
+        .node-info.visible { transform: translateY(0); }
+        .hash-id { font-family: 'JetBrains Mono', monospace; color: #00d2ff; font-size: 18px; margin: 5px 0 15px 0;}
+        .lbl { font-size: 10px; text-transform: uppercase; color: #888; letter-spacing: 1px;}
     </style>
 </head>
 <body>
     <div id="canvas-container"></div>
     
     <div class="ui-glass">
-        <h2>Fractal Codebook</h2>
-        <p>A B-Tree estrutural do Crompressor mapeia "Semântica" no espaço. Arquivos de texto geram galáxias de IDs Hashed O(1).</p>
-        <p>Aproxime o cursor dos clusters visuais. Nodes brilhantes indicam um bloco de dados raiz altamente referenciado (Deduplicado milhares de vezes).</p>
+        <h2>Universo Semântico</h2>
+        <p>A B-Tree LSH do Crompressor mapeia blocos de dados por <b>Semântica</b> no espaço vetorial 3D. O que você está vendo não são estrelas, mas sim o seu disco rígido comprimido.</p>
+        <p>Arquivos com o mesmo contexto gravitam para agrupamentos centrais e se <b>deduplicam instantaneamente (Virando um Cluster)</b>.</p>
+        
+        <div class="controls-hint">
+            <div>🖱️ <b>Scroll:</b> Aproxime/Zomm nas Estrelas (Clusters)</div>
+            <div>🖐️ <b>Drag:</b> Gire o Universo</div>
+            <div>🎯 <b>Hover:</b> Inspecione o Node</div>
+        </div>
     </div>
 
+    <!-- Tooltip HUD para Raycaster -->
     <div class="node-info" id="nodeInfo">
-        <div style="font-size:11px; text-transform:uppercase; color:#888;">Cluster ID Inspecionado</div>
+        <div class="lbl">ID do Chunk Vetorial</div>
         <div class="hash-id" id="hashId">0x000000</div>
-        <div style="margin-top:10px; font-size:13px;">Referências Globais (Deduplicações): <span id="refCount" style="color:#ff007f;font-weight:bold;">0</span></div>
+        
+        <div class="lbl">Refs Globais (Deduplicação)</div>
+        <div style="font-size:22px; color:#ff007f; font-weight:bold; margin-bottom:15px;" id="refCount">0</div>
+        
+        <div class="lbl">Possível Conteúdo LSH</div>
+        <div style="font-size:12px; color:#fff;" id="nodeContext">--</div>
     </div>
 
     <script>
+        // Init Scene
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Fog para efeito universo profundo
+        scene.fog = new THREE.FogExp2(0x000000, 0.015);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        camera.position.z = 50;
-        camera.position.y = 10;
-        camera.lookAt(0,0,0);
+        // Controles de Universo Livres e Fluidos
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 500;
+        controls.minDistance = 2; // Permite chegar MUITO perto
 
-        // Core Particles (Galaxias formadas pela LSH B-Tree)
-        const particleCount = 3000;
+        camera.position.set(0, 15, 60);
+
+        // Gerar Universo LSH
+        const particleCount = 10000;
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         const colors = new Float32Array(particleCount * 3);
+        const sizes = new Float32Array(particleCount);
 
         const color1 = new THREE.Color(0xff007f);
         const color2 = new THREE.Color(0x00d2ff);
+        const color3 = new THREE.Color(0xffffff);
 
         for(let i = 0; i < particleCount; i++) {
-            // Spiral arms math representation for "Clustering" LSH
-            let theta = Math.random() * 2 * Math.PI;
-            let radius = Math.random() * 30;
-            let branch = i % 3; // 3 clusters / branches na B-Tree
+            // Galáxia Espiral 3D matemática simulando clustering LSH
+            let radius = Math.random() * 100;
+            let branch = i % 5; // 5 braços da B-Tree principal
             
-            let angle = (branch * (Math.PI*2/3)) + (radius * 0.2); // Galaxy spiral
+            let angle = (branch * (Math.PI*2/5)) + (radius * 0.1) + (Math.random()*0.5); 
             
-            positions[i*3] = Math.cos(angle) * radius + (Math.random()-0.5)*5; // X
-            positions[i*3+1] = (Math.random()-0.5)*4 * (1-(radius/30)); // Y
-            positions[i*3+2] = Math.sin(angle) * radius + (Math.random()-0.5)*5; // Z
+            let x = Math.cos(angle) * radius + (Math.random()-0.5)*15;
+            let y = (Math.random()-0.5)*15 * (1-(radius/100)); // achatamento do disco
+            let z = Math.sin(angle) * radius + (Math.random()-0.5)*15;
+            
+            // Um core denso
+            if(Math.random() > 0.95) {
+                x *= 0.1; y *= 0.1; z *= 0.1;
+            }
 
-            // Color gradient based on radius
-            const mixedColor = color1.clone().lerp(color2, radius/30);
+            positions[i*3] = x;
+            positions[i*3+1] = y;
+            positions[i*3+2] = z;
+
+            // Cores baseadas no raio e braço
+            let mixedColor = color1.clone().lerp(color2, radius/100);
+            if(Math.random() > 0.9) mixedColor = color3; // White supernodes
+
             colors[i*3] = mixedColor.r;
             colors[i*3+1] = mixedColor.g;
             colors[i*3+2] = mixedColor.b;
+
+            sizes[i] = Math.random() * 1.5;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
+        // Shader Custom para criar brilho (Glowing Dots) no universo
         const material = new THREE.PointsMaterial({
-            size: 0.3,
+            size: 0.8,
             vertexColors: true,
             blending: THREE.AdditiveBlending,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.9,
+            sizeAttenuation: true
         });
 
         const particleSystem = new THREE.Points(geometry, material);
         scene.add(particleSystem);
 
-        let mouseX = 0;
-        let mouseY = 0;
+
+        // --- RAYCASTER (Hover interativo nas estrelas) ---
+        const raycaster = new THREE.Raycaster();
+        raycaster.params.Points.threshold = 1.0; // raio de colisão do hover
+        const mouse = new THREE.Vector2();
+        
         const info = document.getElementById('nodeInfo');
         const hashId = document.getElementById('hashId');
         const refCount = document.getElementById('refCount');
+        const nodeContext = document.getElementById('nodeContext');
 
-        document.addEventListener('mousemove', (e) => {
-            mouseX = (e.clientX - window.innerWidth / 2) * 0.05;
-            mouseY = (e.clientY - window.innerHeight / 2) * 0.05;
+        let INTERSECTED = null;
 
-            // Fake Raycast / Hover trigger
-            if(Math.abs(mouseX) < 4 && Math.abs(mouseY) < 4) {
-                info.classList.add('visible');
-                if(Math.random() > 0.95) { // update data slightly
-                    hashId.textContent = "0x" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0').toUpperCase();
-                    refCount.textContent = Math.floor(Math.random()*5000 + 400);
-                }
-            } else {
-                info.classList.remove('visible');
-            }
+        const dummyContexts = [
+            "Source Code (React JS Component)", 
+            "Image Texture (Alfa Channel)", 
+            "Nginx HTTP 200 Logs", 
+            "Tensor Weight (GGUF LLaMA)", 
+            "OS System Binary / LibC"
+        ];
+
+        document.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            particleSystem.rotation.y += 0.002;
             
-            // Cam parallax
-            camera.position.x += (mouseX - camera.position.x) * 0.05;
-            camera.position.y += (-mouseY - camera.position.y) * 0.05 + 10;
-            camera.lookAt(scene.position);
+            // Rotação sutil da galáxia para dar vida
+            particleSystem.rotation.y -= 0.0005;
+
+            controls.update(); // OrbitControls resolve o math do drag e zoom
+
+            // Lógica do Raycaster para pegar 1 "node" do código
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(particleSystem);
+
+            if (intersects.length > 0) {
+                if (INTERSECTED != intersects[0].index) {
+                    INTERSECTED = intersects[0].index;
+                    
+                    // Mostrar HUD Hover O(1)
+                    info.classList.add('visible');
+                    
+                    // Seed fixo baseado no index point pra manter coerente na rolagem
+                    // Math.sin garante que a ID hash simulada não flique em cada frame
+                    let pseudoRandom = Math.abs(Math.sin(INTERSECTED * 9999));
+                    let colorHex = Math.floor(pseudoRandom * 16777215).toString(16).padStart(6, '0').toUpperCase();
+                    
+                    hashId.textContent = `0x${colorHex}::${INTERSECTED}`;
+                    refCount.textContent = Math.floor(pseudoRandom * 8000) + 1; // "Quantas vezes a B-Tree poupou esse arquivo"
+                    
+                    let contextIndex = Math.floor(pseudoRandom * dummyContexts.length);
+                    nodeContext.textContent = dummyContexts[contextIndex];
+                }
+            } else {
+                INTERSECTED = null;
+                info.classList.remove('visible');
+            }
 
             renderer.render(scene, camera);
         }
